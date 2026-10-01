@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Set up your marketing context – ContentCrew</title>
+  <link rel="icon" href="/static/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/onboarding.css">
+</head>
+<body class="onboarding">
+  <header class="ob-header">
+    <a class="brand" href="/" aria-label="ContentCrew home">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#1F5135"/><path d="M6.5 8h11M6.5 12h11M6.5 16h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="16.6" cy="16" r="1.9" fill="#E2A93B"/></svg>
+      ContentCrew
+    </a>
+    <a class="ob-cancel" id="cancel-link" href="/app" hidden>Back to workspace</a>
+  </header>
+
+  <main class="ob">
+    <aside class="ob-aside">
+      <h1 class="ob-title" id="ob-title">Set up your marketing context</h1>
+      <p class="ob-intro">The agents read this before every task. Research targets your competitors, and writing speaks to your audience.</p>
+
+      <ol class="ob-steps" id="ob-steps" aria-label="Setup steps">
+        <li><button type="button" class="ob-step" data-goto="0"><span class="ob-step-n">1</span>Company</button></li>
+        <li><button type="button" class="ob-step" data-goto="1"><span class="ob-step-n">2</span>Audience and offering</button></li>
+        <li><button type="button" class="ob-step" data-goto="2"><span class="ob-step-n">3</span>Competitors</button></li>
+        <li><button type="button" class="ob-step" data-goto="3"><span class="ob-step-n">4</span>Review</button></li>
+      </ol>
+
+      <div class="ob-sample">
+        <button type="button" class="btn btn-secondary btn-sm" id="use-sample">Fill in the sample company</button>
+        <p class="field-hint">Apimio, the company from the course diagram. You can edit everything after.</p>
+      </div>
+    </aside>
+
+    <section class="ob-panel">
+      <p class="ob-loading" id="ob-loading"><span class="spinner" aria-hidden="true"></span> Loading</p>
+
+      <form class="ob-form" id="ob-form" novalidate hidden>
+        <!-- Step 1 -->
+        <fieldset class="ob-fieldset" data-step="0">
+          <legend class="ob-legend">Company</legend>
+          <p class="ob-legend-hint">Who the content is written for and about.</p>
+
+          <div class="field">
+            <label class="field-label" for="company-name">Company name</label>
+            <input class="input" id="company-name" data-field="company.name" maxlength="80" autocomplete="organization">
+            <p class="field-error" data-error-for="company.name" hidden></p>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="company-website">Website <span class="field-optional">(optional)</span></label>
+            <input class="input" id="company-website" data-field="company.website" maxlength="300" inputmode="url" placeholder="example.com" autocomplete="url">
+            <p class="field-error" data-error-for="company.website" hidden></p>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="company-industry">Industry <span class="field-optional">(optional)</span></label>
+            <input class="input" id="company-industry" data-field="company.industry" maxlength="80" placeholder="E-commerce software">
+            <p class="field-error" data-error-for="company.industry" hidden></p>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="company-description">What does the company do?</label>
+            <textarea class="textarea" id="company-description" data-field="company.description" maxlength="600" rows="4" aria-describedby="description-hint"></textarea>
+            <div class="field-meta">
+              <p class="field-hint" id="description-hint">One or two sentences, at least 20 characters. Agents use this to stay on brand.</p>
+              <span class="char-count" id="description-count">0 / 600</span>
+            </div>
+            <p class="field-error" data-error-for="company.description" hidden></p>
+          </div>
+        </fieldset>
+
+        <!-- Step 2 -->
+        <fieldset class="ob-fieldset" data-step="1" hidden>
+          <legend class="ob-legend">Audience and offering</legend>
+          <p class="ob-legend-hint">Who reads the posts, and what you sell to them.</p>
+
+          <div class="field">
+            <label class="field-label" for="audience-input">Target audience</label>
+            <div class="tag-input" data-field="company.target_audience" data-max="8" data-item-max="60">
+              <ul class="tags" aria-label="Target audiences added"></ul>
+              <input class="tag-entry" id="audience-input" maxlength="60" placeholder="Type an audience and press Enter" aria-describedby="audience-hint">
+            </div>
+            <p class="field-hint" id="audience-hint">Add between 1 and 8, for example "Retail teams".</p>
+            <p class="field-error" data-error-for="company.target_audience" hidden></p>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="products-input">Products and services <span class="field-optional">(optional)</span></label>
+            <div class="tag-input" data-field="company.products" data-max="10" data-item-max="80">
+              <ul class="tags" aria-label="Products added"></ul>
+              <input class="tag-entry" id="products-input" maxlength="80" placeholder="Type a product and press Enter" aria-describedby="products-hint">
+            </div>
+            <p class="field-hint" id="products-hint">Up to 10.</p>
+            <p class="field-error" data-error-for="company.products" hidden></p>
+          </div>
+        </fieldset>
+
+        <!-- Step 3 -->
+        <fieldset class="ob-fieldset" data-step="2" hidden>
+          <legend class="ob-legend">Competitors</legend>
+          <p class="ob-legend-hint">The Analysis Agent studies what these companies publish. Two to four works best. You can also leave this empty and let the agent find them.</p>
+
+          <div class="comp-head" aria-hidden="true">
+            <span>Name</span><span>Website <span class="field-optional">(optional)</span></span>
+          </div>
+          <ol class="comp-rows" id="comp-rows"></ol>
+          <p class="field-error" data-error-for="competitors" hidden></p>
+          <button type="button" class="btn btn-quiet btn-sm comp-add" id="add-competitor">Add a competitor</button>
+        </fieldset>
+
+        <!-- Step 4 -->
+        <fieldset class="ob-fieldset" data-step="3" hidden>
+          <legend class="ob-legend">Review</legend>
+          <p class="ob-legend-hint">This is what every agent will see. Check it, then save.</p>
+          <div class="review" id="review"></div>
+        </fieldset>
+
+        <p class="form-error" id="form-error" role="alert" hidden></p>
+
+        <div class="ob-actions">
+          <button type="button" class="btn btn-secondary" id="back-button">Back</button>
+          <button type="submit" class="btn btn-primary" id="next-button">Continue</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <div class="toast-region" id="toasts" aria-live="polite"></div>
+  <script type="module" src="/static/js/onboarding.js"></script>
+</body>
+</html>

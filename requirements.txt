@@ -1,0 +1,16 @@
+# Web app
+flask>=3.0
+python-dotenv>=1.0
+
+# Agent workflow
+langgraph>=1.0
+langgraph-checkpoint-sqlite>=3.0   # saves paused workflows to data/checkpoints.db
+langchain-groq>=1.0                 # free language model (Groq free tier)
+langchain-openai>=1.0               # optional, only if you use a paid OpenAI key
+
+# Tools
+requests>=2.31
+beautifulsoup4>=4.12
+
+# Tests
+pytest>=8.0

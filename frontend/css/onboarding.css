@@ -1,0 +1,404 @@
+/* Onboarding: four steps that build the marketing context */
+
+.onboarding {
+  min-height: 100vh;
+}
+
+.ob-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px 28px;
+}
+
+.ob-cancel {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.ob {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr);
+  gap: 56px;
+  align-items: start;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 28px 72px;
+}
+
+/* --- Left column ----------------------------------------------------------- */
+
+.ob-aside {
+  position: sticky;
+  top: 24px;
+}
+
+.ob-title {
+  font-size: 29px;
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+
+.ob-intro {
+  margin-top: 12px;
+  color: var(--ink-2);
+}
+
+.ob-steps {
+  display: grid;
+  gap: 2px;
+  margin-top: 30px;
+}
+
+.ob-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-3);
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ob-step:disabled {
+  cursor: default;
+}
+
+.ob-step:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ink);
+}
+
+.ob-step-n {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+.ob-step.is-done {
+  color: var(--ink-2);
+}
+
+.ob-step.is-done .ob-step-n {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.ob-step[aria-current="step"] {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.ob-step[aria-current="step"] .ob-step-n {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+.ob-sample {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+/* --- Form panel ------------------------------------------------------------ */
+
+.ob-panel {
+  padding: 32px 36px 28px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.ob-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-3);
+}
+
+.ob-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ob-legend {
+  padding: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.ob-legend-hint {
+  max-width: 52ch;
+  margin: 6px 0 26px;
+  color: var(--ink-2);
+}
+
+/* Tag input */
+
+.tag-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  cursor: text;
+}
+
+.tag-input:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-tint);
+}
+
+.tags {
+  display: contents;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 3px 3px 11px;
+  border-radius: 999px;
+  background: var(--brand-tint);
+  font-size: 14px;
+}
+
+.tag-remove {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.tag-remove:hover {
+  background: rgba(31, 81, 53, 0.14);
+  color: var(--ink);
+}
+
+.tag-entry {
+  flex: 1;
+  min-width: 180px;
+  padding: 5px 4px;
+  border: 0;
+  background: none;
+  font-size: 15px;
+}
+
+.tag-entry:focus-visible {
+  box-shadow: none;
+}
+
+/* Competitor rows */
+
+.comp-head,
+.comp-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 84px;
+  gap: 10px;
+}
+
+.comp-head {
+  margin-bottom: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.comp-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.comp-cell {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.comp-remove {
+  align-self: start;
+  min-height: 42px;
+}
+
+.comp-add {
+  margin-top: 12px;
+  margin-left: -10px;
+  color: var(--brand);
+}
+
+.comp-empty {
+  padding: 14px 16px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-s);
+  color: var(--ink-3);
+  font-size: 14px;
+}
+
+/* Review */
+
+.review-section {
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+
+.review-section:last-child {
+  padding-bottom: 0;
+}
+
+.review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.review-head h3 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.review-list > div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 16px;
+  padding: 4px 0;
+  font-size: 14.5px;
+}
+
+.review-list dt {
+  color: var(--ink-3);
+}
+
+.review-list dd {
+  overflow-wrap: anywhere;
+}
+
+.review-missing {
+  color: var(--ink-3);
+}
+
+/* Footer */
+
+.form-error {
+  margin-top: 22px;
+  padding: 10px 14px;
+  border-radius: var(--radius-s);
+  background: var(--danger-tint);
+  color: var(--danger);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ob-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.ob-actions .btn-primary {
+  min-width: 150px;
+  margin-left: auto;
+}
+
+/* --- Responsive ------------------------------------------------------------ */
+
+@media (max-width: 880px) {
+  .ob {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding-top: 8px;
+  }
+
+  .ob-aside {
+    position: static;
+  }
+
+  .ob-steps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 22px;
+  }
+
+  .ob-step {
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 4px;
+    font-size: 12.5px;
+    text-align: center;
+  }
+
+  .ob-sample {
+    margin-top: 18px;
+    padding-top: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .ob-header,
+  .ob {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .ob-panel {
+    padding: 22px 18px 20px;
+  }
+
+  .comp-head {
+    display: none;
+  }
+
+  .comp-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .comp-remove {
+    justify-self: start;
+    min-height: 32px;
+  }
+
+  .review-list > div {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 6px 0;
+  }
+}

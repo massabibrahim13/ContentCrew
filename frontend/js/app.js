@@ -1,0 +1,454 @@
+/**
+ * Dashboard controller.
+ *
+ * Flow: the user sends a message -> POST /api/chat starts (or continues) a
+ * session -> the backend publishes events -> the live stream delivers them ->
+ * the timeline draws them. The page URL carries ?session=<id> so a reload
+ * replays the same chat.
+ */
+
+import { api, openEventStream } from "./api.js";
+import { h, toast } from "./dom.js";
+import { BlogEditor } from "./editor.js";
+import { renderContext, renderContextError } from "./context-panel.js";
+import { Timeline } from "./timeline.js";
+
+const $ = (id) => document.getElementById(id);
+
+const els = {
+  workspace: $("workspace"),
+  workspaceName: $("workspace-name"),
+  status: $("session-status"),
+  statusText: $("session-status-text"),
+  newChat: $("new-chat"),
+  contextToggle: $("context-toggle"),
+  contextPanel: $("context-panel"),
+  contextBody: $("context-body"),
+  threadScroll: $("thread-scroll"),
+  emptyState: $("empty-state"),
+  emptyTitle: $("empty-title"),
+  suggestions: $("suggestions"),
+  composer: $("composer"),
+  input: $("composer-input"),
+  send: $("composer-send"),
+  composerError: $("composer-error"),
+  composerHint: $("composer-hint"),
+  count: $("composer-count"),
+  scrim: $("scrim"),
+};
+
+const MAX_MESSAGE = 2000;
+const OFFLINE_GRACE_MS = 4000;
+
+const state = {
+  sessionId: null,
+  lastEventId: 0,
+  stream: null,
+  sending: false,
+  statusTimer: null,
+  offlineTimer: null,
+};
+
+/* Workflow status -> what the top bar says. */
+const STATUS_LABELS = {
+  REQUESTED: ["Request received", "working"],
+  PLANNING: ["Supervisor is planning", "working"],
+  RESEARCHING: ["Analysis Agent is researching", "working"],
+  ANALYZING: ["Analysis Agent is analyzing", "working"],
+  WAITING_FOR_RESEARCH_APPROVAL: ["Waiting for your approval", "waiting"],
+  GENERATING: ["Generation Agent is writing", "working"],
+  WAITING_FOR_CONTENT_APPROVAL: ["Draft ready for your review", "waiting"],
+  PUBLISHING: ["Publishing", "working"],
+  COMPLETED: ["Done", "done"],
+  FAILED: ["Stopped with an error", "failed"],
+};
+
+// ---------------------------------------------------------------------------
+// Timeline + editor
+// ---------------------------------------------------------------------------
+
+const timeline = new Timeline($("timeline"), {
+  onApprove: (stage) => decide(stage, "approve"),
+  onModify: (stage, feedback) => decide(stage, "modify", feedback),
+  onOpenDraft: (blogId) => openDraft(blogId),
+  onRetry: () => retry(),
+});
+
+const editor = new BlogEditor(
+  {
+    panel: $("editor-panel"),
+    title: $("editor-title"),
+    preview: $("editor-preview"),
+    source: $("editor-source"),
+    status: $("editor-status"),
+    error: $("editor-error"),
+    edit: $("editor-edit"),
+    regenerate: $("editor-regenerate"),
+    publish: $("editor-publish"),
+    close: $("editor-close"),
+  },
+  {
+    onSave: (blogId, changes) => api.updateBlog(blogId, changes),
+    onRegenerate: () => api.decideContent(state.sessionId, "regenerate").then(refreshStatusSoon),
+    onPublish: () => api.decideContent(state.sessionId, "approve").then(refreshStatusSoon),
+    onOpenChange: (open) => {
+      els.workspace.dataset.editor = open ? "open" : "closed";
+      updateScrim();
+    },
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Status
+// ---------------------------------------------------------------------------
+
+function setStatus(label, tone) {
+  els.status.dataset.state = tone;
+  els.statusText.textContent = label;
+}
+
+function showWorkflowStatus(status) {
+  if (!status) {
+    setStatus("No active chat", "idle");
+    return;
+  }
+  let [label, tone] = STATUS_LABELS[status.workflow_status] || [status.workflow_status, "idle"];
+  if (status.workflow_status === "COMPLETED" && status.publish_status === "published") {
+    label = "Published";
+  }
+  setStatus(label, tone);
+}
+
+function refreshStatusSoon() {
+  window.clearTimeout(state.statusTimer);
+  const sessionId = state.sessionId;
+  if (!sessionId) return;
+  state.statusTimer = window.setTimeout(async () => {
+    try {
+      const status = await api.getStatus(sessionId);
+      if (sessionId === state.sessionId) showWorkflowStatus(status);
+    } catch (err) {
+      if (err.code === "network_error") setStatus("Can't reach the server", "offline");
+    }
+  }, 250);
+}
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+
+// Follow new events while the reader is at the bottom; stop if they scroll up to read.
+let followNewEvents = true;
+
+function isNearBottom() {
+  const el = els.threadScroll;
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+}
+
+function scrollToBottom() {
+  els.threadScroll.scrollTop = els.threadScroll.scrollHeight;
+}
+
+function handleEvent(event, { replay = false } = {}) {
+  if (!event || typeof event.id !== "number" || event.id <= state.lastEventId) return;
+  state.lastEventId = event.id;
+  els.emptyState.hidden = true;
+
+  const stick = replay || followNewEvents || (event.type === "message" && event.role === "user");
+  timeline.add(event);
+  if (stick) {
+    scrollToBottom();
+    followNewEvents = true;
+  }
+
+  if (!replay) {
+    if (event.type === "blog_ready") openDraft(event.blog_id);
+    if (event.type === "blog_published" && editor.blogId === event.blog_id) openDraft(event.blog_id);
+    if (event.type === "approval_required" && event.stage === "research") loadContext(); // research numbers
+    refreshStatusSoon();
+  }
+}
+
+function openStream() {
+  closeStream();
+  const sessionId = state.sessionId;
+  state.stream = openEventStream(sessionId, state.lastEventId, {
+    onEvent: (event) => {
+      if (sessionId === state.sessionId) handleEvent(event);
+    },
+    onConnectionChange: (connection) => {
+      if (connection === "open") {
+        window.clearTimeout(state.offlineTimer);
+        refreshStatusSoon();
+      } else {
+        // The stream reconnects every minute by design; only complain if it stays down.
+        window.clearTimeout(state.offlineTimer);
+        state.offlineTimer = window.setTimeout(
+          () => setStatus("Live updates paused, reconnecting", "offline"), OFFLINE_GRACE_MS);
+      }
+    },
+  });
+}
+
+function closeStream() {
+  state.stream?.close();
+  state.stream = null;
+  window.clearTimeout(state.offlineTimer);
+}
+
+// ---------------------------------------------------------------------------
+// Sessions
+// ---------------------------------------------------------------------------
+
+async function loadSession(sessionId) {
+  try {
+    const { session, events } = await api.getSession(sessionId);
+    state.sessionId = session.id;
+    state.lastEventId = 0;
+    timeline.reset();
+    for (const event of events) handleEvent(event, { replay: true });
+    els.emptyState.hidden = !timeline.isEmpty;
+    showWorkflowStatus({ workflow_status: session.status, running: false });
+    refreshStatusSoon();
+    openStream();
+
+    const lastDraft = [...events].reverse().find((e) => e.type === "blog_ready");
+    if (lastDraft) openDraft(lastDraft.blog_id);
+  } catch (err) {
+    if (err.status === 404) {
+      toast("That chat no longer exists. Starting a new one.");
+      newChat();
+    } else {
+      toast(err.message, "error", 7000);
+    }
+  }
+}
+
+function newChat() {
+  closeStream();
+  window.clearTimeout(state.statusTimer);
+  state.sessionId = null;
+  state.lastEventId = 0;
+  timeline.reset();
+  editor.close();
+  els.emptyState.hidden = false;
+  showComposerError("");
+  showWorkflowStatus(null);
+  history.replaceState(null, "", "/app");
+  els.input.focus();
+}
+
+// ---------------------------------------------------------------------------
+// Composer
+// ---------------------------------------------------------------------------
+
+function showComposerError(message, action) {
+  els.composerError.replaceChildren();
+  if (message) {
+    els.composerError.append(message);
+    if (action) els.composerError.append(" ", action);
+  }
+  els.composerError.hidden = !message;
+  els.composerHint.hidden = Boolean(message);
+}
+
+function autosize() {
+  els.input.style.height = "auto";
+  els.input.style.height = `${Math.min(els.input.scrollHeight, 200)}px`;
+  const length = els.input.value.length;
+  els.count.hidden = length < MAX_MESSAGE - 200;
+  els.count.textContent = `${length} / ${MAX_MESSAGE}`;
+  els.count.classList.toggle("is-over", length > MAX_MESSAGE);
+}
+
+function setSending(sending) {
+  state.sending = sending;
+  els.send.disabled = sending;
+  els.send.textContent = sending ? "Sending" : "Send";
+  els.input.setAttribute("aria-busy", String(sending));
+}
+
+async function send(text) {
+  const message = (text ?? els.input.value).trim();
+  if (state.sending) return;
+  if (message.length < 2) {
+    showComposerError("Type a request first, for example: Write me a blog about Agentic AI.");
+    els.input.focus();
+    return;
+  }
+  if (message.length > MAX_MESSAGE) {
+    showComposerError(`Keep the message under ${MAX_MESSAGE} characters.`);
+    return;
+  }
+
+  showComposerError("");
+  setSending(true);
+  try {
+    const { session } = await api.sendMessage(message, state.sessionId);
+    if (session.id !== state.sessionId) {
+      state.sessionId = session.id;
+      state.lastEventId = 0;
+      timeline.reset();
+      history.replaceState(null, "", `/app?session=${session.id}`);
+    }
+    if (!state.stream) openStream();
+    if (text === undefined) {
+      els.input.value = "";
+      autosize();
+    }
+    showWorkflowStatus({ workflow_status: session.status, running: true });
+    refreshStatusSoon();
+  } catch (err) {
+    if (err.code === "onboarding_required") {
+      showComposerError(err.message, h("a", { href: "/onboarding" }, "Set it up"));
+    } else if (err.code === "session_not_found") {
+      newChat();
+      showComposerError("That chat was removed. Your message is still here; send it again to start a new chat.");
+      els.input.value = message;
+      autosize();
+    } else {
+      showComposerError(err.message);
+    }
+  } finally {
+    setSending(false);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Approvals and drafts
+// ---------------------------------------------------------------------------
+
+async function decide(stage, decision, feedback) {
+  timeline.setApprovalBusy(stage, true);
+  timeline.setApprovalError(stage, "");
+  try {
+    const call = stage === "research" ? api.decideResearch : api.decideContent;
+    await call(state.sessionId, decision, feedback);
+    refreshStatusSoon();
+  } catch (err) {
+    timeline.setApprovalError(stage, err.message);
+  } finally {
+    timeline.setApprovalBusy(stage, false);
+  }
+}
+
+async function retry() {
+  if (!state.sessionId) return;
+  try {
+    await api.retrySession(state.sessionId);
+    refreshStatusSoon();
+  } catch (err) {
+    toast(err.message, "error");
+  }
+}
+
+async function openDraft(blogId) {
+  try {
+    const { blog } = await api.getBlog(blogId);
+    editor.open(blog);
+  } catch (err) {
+    toast(err.message, "error");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Context panel
+// ---------------------------------------------------------------------------
+
+function lowerFirst(text) {
+  return /^[A-Z][a-z]/.test(text) ? text[0].toLowerCase() + text.slice(1) : text;
+}
+
+function renderSuggestions(context) {
+  const { company, competitors } = context;
+  const ideas = ["Write me a blog about Agentic AI"];
+  if (company.target_audience?.[0]) ideas.push(`Write a practical how-to guide for ${lowerFirst(company.target_audience[0])}`);
+  if (competitors?.[0]) ideas.push(`Write a post on what ${company.name} does differently from ${competitors[0].name}`);
+
+  els.suggestions.replaceChildren(...ideas.map((idea) =>
+    h("li", {}, h("button", { type: "button", class: "suggestion", onclick: () => {
+      els.input.value = idea;
+      autosize();
+      els.input.focus();
+    } }, idea))));
+}
+
+async function loadContext() {
+  try {
+    const [context, health] = await Promise.all([
+      api.getContext(),
+      api.getHealth().catch(() => null),
+    ]);
+    if (!context.onboarded) {
+      window.location.assign("/onboarding");
+      return;
+    }
+    renderContext(els.contextBody, context, health);
+    els.workspaceName.textContent = context.company.name;
+    els.emptyTitle.textContent = `What should we write for ${context.company.name}?`;
+    renderSuggestions(context);
+  } catch (err) {
+    renderContextError(els.contextBody, err.message, loadContext);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Drawers on narrow screens
+// ---------------------------------------------------------------------------
+
+const narrowEditor = window.matchMedia("(max-width: 1180px)");
+const narrowContext = window.matchMedia("(max-width: 900px)");
+
+function setContextOpen(open) {
+  els.workspace.dataset.context = open ? "open" : "closed";
+  els.contextToggle.setAttribute("aria-expanded", String(open));
+  if (open) els.contextPanel.focus({ preventScroll: true });
+  updateScrim();
+}
+
+function updateScrim() {
+  const editorOverlay = narrowEditor.matches && editor.isOpen;
+  const contextOverlay = narrowContext.matches && els.workspace.dataset.context === "open";
+  els.scrim.hidden = !(editorOverlay || contextOverlay);
+}
+
+// ---------------------------------------------------------------------------
+// Wire up
+// ---------------------------------------------------------------------------
+
+els.composer.addEventListener("submit", (e) => {
+  e.preventDefault();
+  send();
+});
+
+els.input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    send();
+  }
+});
+
+els.input.addEventListener("input", () => {
+  autosize();
+  if (!els.composerError.hidden) showComposerError("");
+});
+
+els.threadScroll.addEventListener("scroll", () => { followNewEvents = isNearBottom(); }, { passive: true });
+els.newChat.addEventListener("click", newChat);
+els.contextToggle.addEventListener("click", () => setContextOpen(els.workspace.dataset.context !== "open"));
+els.scrim.addEventListener("click", () => {
+  setContextOpen(false);
+  if (narrowEditor.matches) editor.close();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (els.workspace.dataset.context === "open") setContextOpen(false);
+  else if (narrowEditor.matches && editor.isOpen) editor.close();
+});
+narrowEditor.addEventListener("change", updateScrim);
+narrowContext.addEventListener("change", updateScrim);
+
+loadContext();
+const initialSession = new URLSearchParams(window.location.search).get("session");
+if (initialSession) loadSession(initialSession);
+else showWorkflowStatus(null);

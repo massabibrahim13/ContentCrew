@@ -1,0 +1,15 @@
+{
+  "company": {
+    "name": "Apimio",
+    "website": "https://apimio.com",
+    "industry": "E-commerce software",
+    "description": "AI-powered commerce and automation platform that helps brands manage, enrich and publish product information across every sales channel.",
+    "target_audience": ["E-commerce brands", "Retail teams", "Enterprise"],
+    "products": ["Product information management", "Product data syndication", "AI product content"]
+  },
+  "competitors": [
+    {"name": "Akeneo", "website": "https://www.akeneo.com"},
+    {"name": "Salsify", "website": "https://www.salsify.com"},
+    {"name": "Plytix", "website": "https://www.plytix.com"}
+  ]
+}

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ContentCrew workspace</title>
+  <link rel="icon" href="/static/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="ContentCrew home">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#1F5135"/><path d="M6.5 8h11M6.5 12h11M6.5 16h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="16.6" cy="16" r="1.9" fill="#E2A93B"/></svg>
+      <span class="brand-word">ContentCrew</span>
+    </a>
+    <span class="topbar-workspace" id="workspace-name"></span>
+    <p class="session-status" id="session-status" role="status" data-state="idle">
+      <span class="session-status-dot" aria-hidden="true"></span>
+      <span id="session-status-text">No active chat</span>
+    </p>
+    <div class="topbar-actions">
+      <button type="button" class="btn btn-quiet btn-sm context-toggle" id="context-toggle" aria-controls="context-panel" aria-expanded="false">Context</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="new-chat">New chat</button>
+    </div>
+  </header>
+
+  <div class="workspace" id="workspace" data-editor="closed" data-context="closed">
+    <aside class="panel context-panel" id="context-panel" aria-label="Marketing context" tabindex="-1">
+      <div class="panel-head">
+        <h2 class="panel-title">Marketing context</h2>
+        <a class="panel-link" href="/onboarding?edit=1">Edit</a>
+      </div>
+      <div class="context-body" id="context-body">
+        <p class="panel-loading"><span class="spinner" aria-hidden="true"></span> Loading your company context</p>
+      </div>
+    </aside>
+
+    <main class="panel chat-panel" aria-label="Chat">
+      <div class="thread-scroll" id="thread-scroll">
+        <div class="thread">
+          <div class="empty-state" id="empty-state">
+            <h1 class="empty-title" id="empty-title">What should we write?</h1>
+            <p class="empty-text">Describe the post you want. The Supervisor plans it, the Analysis Agent researches your competitors, and you approve each step before anything is published.</p>
+            <ul class="suggestions" id="suggestions" aria-label="Example requests"></ul>
+            <p class="empty-foot">When a draft is ready, it opens on the right for you to review.</p>
+          </div>
+          <div class="timeline" id="timeline"></div>
+        </div>
+      </div>
+
+      <form class="composer" id="composer" novalidate>
+        <label class="visually-hidden" for="composer-input">Message</label>
+        <div class="composer-box">
+          <textarea id="composer-input" class="composer-input" rows="1" maxlength="2000" placeholder="Describe the blog post you want" autocomplete="off"></textarea>
+          <button type="submit" class="btn btn-primary composer-send" id="composer-send">Send</button>
+        </div>
+        <div class="composer-meta">
+          <p class="composer-error" id="composer-error" role="alert" hidden></p>
+          <p class="composer-hint" id="composer-hint">Enter to send. Shift + Enter for a new line.</p>
+          <span class="char-count" id="composer-count" hidden></span>
+        </div>
+      </form>
+    </main>
+
+    <aside class="panel editor-panel" id="editor-panel" aria-label="Blog editor" tabindex="-1" hidden>
+      <div class="editor-head">
+        <h2 class="panel-title">Blog</h2>
+        <span class="editor-status" id="editor-status" data-state="draft">Draft</span>
+        <button type="button" class="icon-btn" id="editor-close" aria-label="Close the blog editor">
+          <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg>
+        </button>
+      </div>
+      <div class="editor-scroll">
+        <label class="visually-hidden" for="editor-title">Title</label>
+        <input id="editor-title" class="editor-title" type="text" maxlength="160" readonly>
+        <article class="prose" id="editor-preview"></article>
+        <label class="visually-hidden" for="editor-source">Post content (Markdown)</label>
+        <textarea id="editor-source" class="editor-source" spellcheck="true" hidden></textarea>
+      </div>
+      <p class="editor-error" id="editor-error" role="alert" hidden></p>
+      <div class="editor-actions">
+        <button type="button" class="btn btn-secondary" id="editor-edit">Edit</button>
+        <button type="button" class="btn btn-secondary" id="editor-regenerate">Regenerate</button>
+        <button type="button" class="btn btn-primary editor-publish" id="editor-publish">Publish</button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="scrim" id="scrim" hidden></div>
+  <div class="toast-region" id="toasts" aria-live="polite"></div>
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

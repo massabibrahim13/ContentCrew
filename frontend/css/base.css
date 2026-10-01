@@ -1,0 +1,389 @@
+/* ==========================================================================
+   ContentCrew design tokens and base styles
+   - Schibsted Grotesk for the product, Newsreader for the content it writes.
+   - Bottle green = brand and "done". Amber = "needs your decision", nothing else.
+   ========================================================================== */
+
+/* Fonts are bundled (SIL Open Font License, see assets/fonts/LICENSE.txt),
+   so the app works offline and loads nothing from third parties. */
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("../assets/fonts/schibsted-grotesk-latin-wght-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("../assets/fonts/newsreader-latin-opsz-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Newsreader";
+  font-style: italic;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("../assets/fonts/newsreader-latin-opsz-italic.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: light;
+
+  --canvas: #eef0ec;
+  --surface: #ffffff;
+  --surface-sunk: #f5f6f3;
+  --ink: #1b201d;
+  --ink-2: #4a524c;
+  --ink-3: #687069;
+  --line: #d8dcd5;
+  --line-strong: #bcc3b9;
+
+  --brand: #1f5135;
+  --brand-hover: #173f29;
+  --brand-tint: #e4ede7;
+
+  --attention: #8a5a0f;
+  --attention-line: #d6a03c;
+  --attention-tint: #fbf1dc;
+
+  --danger: #a23b2a;
+  --danger-tint: #f8e7e3;
+
+  --agent-supervisor: #1f5135;
+  --agent-analysis: #2c5d78;
+  --agent-generation: #7a4d2c;
+
+  --font-ui: "Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-read: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-code: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --shadow-pop: 0 1px 2px rgba(27, 32, 29, 0.06), 0 10px 30px rgba(27, 32, 29, 0.1);
+
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--brand);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, p, ul, ol, dl, dd, figure, blockquote {
+  margin: 0;
+}
+
+ul, ol {
+  padding: 0;
+  list-style: none;
+}
+
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: var(--brand);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  color: var(--brand-hover);
+}
+
+button, input, textarea, select {
+  font: inherit;
+  color: inherit;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+  border-radius: var(--radius-s);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Brand ----------------------------------------------------------------- */
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.015em;
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--ink);
+}
+
+.brand-mark {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+
+/* --- Buttons --------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  background: none;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--brand-hover);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+
+.btn-quiet {
+  padding: 0 10px;
+  color: var(--ink-2);
+}
+
+.btn-quiet:hover:not(:disabled) {
+  background: var(--surface-sunk);
+  color: var(--ink);
+}
+
+.btn-lg {
+  min-height: 48px;
+  padding: 0 22px;
+  font-size: 16px;
+}
+
+.btn-sm {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13.5px;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: var(--surface-sunk);
+  color: var(--ink);
+}
+
+/* --- Forms ----------------------------------------------------------------- */
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field + .field {
+  margin-top: 20px;
+}
+
+.field-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.field-optional {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.field-hint {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  font-size: 15px;
+  transition: border-color 120ms ease;
+}
+
+.textarea {
+  min-height: 108px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: #8b928b;
+}
+
+.input:hover,
+.textarea:hover {
+  border-color: var(--ink-3);
+}
+
+.input:focus-visible,
+.textarea:focus-visible {
+  border-color: var(--brand);
+  border-radius: var(--radius-s);
+}
+
+[aria-invalid="true"] {
+  border-color: var(--danger) !important;
+}
+
+.field-error {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--danger);
+}
+
+.field-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.char-count {
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.char-count.is-over {
+  color: var(--danger);
+}
+
+/* --- Spinner (only shown while something is actually running) --------------- */
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+  flex: none;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Toasts ---------------------------------------------------------------- */
+
+.toast-region {
+  position: fixed;
+  inset: auto 16px 16px auto;
+  z-index: 50;
+  display: grid;
+  gap: 8px;
+  max-width: min(380px, calc(100vw - 32px));
+}
+
+.toast {
+  padding: 12px 14px;
+  border-radius: var(--radius-m);
+  background: var(--ink);
+  color: #fff;
+  font-size: 14px;
+  box-shadow: var(--shadow-pop);
+}
+
+.toast.is-error {
+  background: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

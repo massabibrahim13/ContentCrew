@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ContentCrew</title>
+  <meta name="description" content="AI agents research your competitors and draft blog posts. You approve every step before anything is published.">
+  <link rel="icon" href="/static/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/landing.css">
+</head>
+<body class="landing">
+  <header class="site-header">
+    <div class="wrap site-header-inner">
+      <a class="brand" href="/" aria-label="ContentCrew home">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#1F5135"/><path d="M6.5 8h11M6.5 12h11M6.5 16h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="16.6" cy="16" r="1.9" fill="#E2A93B"/></svg>
+        ContentCrew
+      </a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="#how">How it works</a>
+        <a href="#workspace">Product</a>
+        <a class="btn btn-primary btn-sm" href="/app">Get started</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <h1 class="hero-title">Turn market research into publish&#8209;ready content.</h1>
+          <p class="hero-lede">ContentCrew's agents study what your competitors publish, find what they leave out, and draft posts that cover it. Nothing moves forward without your approval.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary btn-lg" href="/app">Start creating</a>
+            <a class="hero-link" href="#how">See how a post gets made</a>
+          </div>
+        </div>
+
+        <figure class="sheet" aria-labelledby="sheet-caption">
+          <div class="sheet-page">
+            <p class="sheet-status"><span class="sheet-status-dot" aria-hidden="true"></span>Draft, waiting for your review</p>
+            <h2 class="sheet-title">Agentic AI: the future of work</h2>
+            <p class="sheet-text">Most teams first meet agentic AI as a chatbot that writes. The shift that matters is quieter: software that plans a task, uses tools to finish it, and checks in with a person before it acts.</p>
+            <h3 class="sheet-heading">What makes an agent different</h3>
+            <p class="sheet-text">An agent works toward a goal. It breaks the goal into steps, picks a tool for each one, and reads the result before deciding what comes next.</p>
+            <span class="sheet-line" aria-hidden="true"></span>
+            <span class="sheet-line short" aria-hidden="true"></span>
+          </div>
+          <div class="sheet-notes" aria-label="Research notes">
+            <p class="sheet-note">
+              <span class="sheet-note-who">Analysis Agent</span>
+              Competitor posts define agents but skip how approval works in practice. This section covers that gap.
+            </p>
+            <p class="sheet-note">
+              <span class="sheet-note-who">Analysis Agent</span>
+              A heading most competitor articles share, kept for search intent.
+            </p>
+          </div>
+          <figcaption id="sheet-caption" class="sheet-caption">Example draft with the research notes behind it.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="how" id="how" aria-labelledby="how-title">
+      <div class="wrap">
+        <div class="how-intro">
+          <h2 class="section-title" id="how-title">How a post gets made</h2>
+          <p class="section-lede">Three agents share the work. Twice along the way, everything stops until you decide.</p>
+        </div>
+
+        <ol class="track">
+          <li class="track-step">
+            <span class="track-node">1</span>
+            <h3>Plan</h3>
+            <p>The Supervisor reads your request and company context, then lays out the steps.</p>
+            <span class="track-who">Supervisor Agent</span>
+          </li>
+          <li class="track-step">
+            <span class="track-node">2</span>
+            <h3>Research</h3>
+            <p>Searches competitor content, reads the articles, and maps keywords and gaps.</p>
+            <span class="track-who">Analysis Agent</span>
+          </li>
+          <li class="track-step is-human">
+            <span class="track-node">3</span>
+            <h3>Approve the strategy</h3>
+            <p>Check the sources, keywords and outline. Approve it, or say what to change.</p>
+            <span class="track-who">You</span>
+          </li>
+          <li class="track-step">
+            <span class="track-node">4</span>
+            <h3>Write</h3>
+            <p>Turns the approved strategy into an original draft, not a copy of competitors.</p>
+            <span class="track-who">Generation Agent</span>
+          </li>
+          <li class="track-step is-human">
+            <span class="track-node">5</span>
+            <h3>Review the draft</h3>
+            <p>Edit it yourself, ask for a rewrite, or approve it for publishing.</p>
+            <span class="track-who">You</span>
+          </li>
+          <li class="track-step">
+            <span class="track-node">6</span>
+            <h3>Publish</h3>
+            <p>Only after your approval does the post go out through the blog API.</p>
+            <span class="track-who">Supervisor Agent</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="workspace-note" id="workspace" aria-labelledby="workspace-title">
+      <div class="wrap workspace-note-grid">
+        <h2 class="section-title" id="workspace-title">You can see every step</h2>
+        <dl class="workspace-points">
+          <div>
+            <dt>Your context stays in view</dt>
+            <dd>Company, audience and competitors sit beside the chat, so you always know what the agents are working from.</dd>
+          </div>
+          <div>
+            <dt>Live agent activity</dt>
+            <dd>Which agent is working, which tool it called, and what came back, as it happens.</dd>
+          </div>
+          <div>
+            <dt>An editor, not a chat reply</dt>
+            <dd>The finished draft opens beside the conversation, ready to edit before you publish.</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap site-footer-inner">
+      <span class="brand brand-small">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#1F5135"/><path d="M6.5 8h11M6.5 12h11M6.5 16h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="16.6" cy="16" r="1.9" fill="#E2A93B"/></svg>
+        ContentCrew
+      </span>
+      <p>Better content. Smarter marketing.</p>
+      <a class="btn btn-secondary btn-sm" href="/app">Open the workspace</a>
+    </div>
+  </footer>
+</body>
+</html>
