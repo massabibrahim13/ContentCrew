@@ -320,6 +320,23 @@
   color: var(--ink-3);
 }
 
+.ctx-research-latest .ctx-label {
+  margin: 12px 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ctx-research-summary {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;          /* keep the panel quiet; the full text is in the chat */
+  overflow: hidden;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
 .connections {
   margin-top: 8px;
 }
@@ -847,22 +864,111 @@
   border-top: 1px solid rgba(214, 160, 60, 0.45);
 }
 
-.approval-section h4 {
+/* Summary blocks (shared by the approval cards and the editor's details panel) */
+.summary-section h4 {
   font-size: 13.5px;
   font-weight: 600;
 }
 
-.approval-section ul {
+.summary-section ul {
   margin-top: 4px;
   padding-left: 18px;
   list-style: disc;
   color: var(--ink-2);
 }
 
-.approval-note {
+.summary-text {
+  margin-top: 3px;
+  color: var(--ink-2);
+}
+
+.summary-note {
   margin-top: 4px;
   font-size: 13px;
   color: var(--ink-3);
+}
+
+/* Counts: the number large, its label small underneath */
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 8px;
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column-reverse;   /* <dt> label first in the markup, shown under the number */
+  gap: 1px;
+  padding: 9px 11px 8px;
+  border-radius: var(--radius-s);
+  background: var(--surface);
+}
+
+.summary-stat dd {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.summary-stat dt {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.approval-stats {
+  margin-top: 12px;
+}
+
+.approval-stats .summary-stat {
+  border: 1px solid rgba(214, 160, 60, 0.4);
+}
+
+.approval-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--attention);
+  cursor: pointer;
+}
+
+.approval-toggle:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.approval-toggle:focus-visible {
+  border-radius: 4px;
+  box-shadow: var(--focus);
+  outline: none;
+}
+
+.approval-toggle .icon {
+  transition: transform 0.15s ease;
+}
+
+.approval-toggle[aria-expanded="true"] .icon {
+  transform: rotate(180deg);
+}
+
+.approval-details {
+  margin-top: 8px;
+}
+
+.approval.is-resolved .approval-toggle {
+  color: var(--ink-2);
+}
+
+.approval.is-resolved .approval-stats .summary-stat {
+  border-color: var(--line);
 }
 
 .approval-question {
@@ -1002,9 +1108,11 @@
 }
 
 .editor-title {
+  display: block;
   width: calc(100% + 16px);
   margin: 0 -8px;
   padding: 6px 8px;
+  overflow: hidden;
   border: 1px solid transparent;
   border-radius: var(--radius-s);
   background: none;
@@ -1013,10 +1121,95 @@
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
+  resize: none;   /* it grows with the title instead, so long titles wrap rather than get cut off */
 }
 
 .editor-title:not([readonly]) {
   border-color: var(--line-strong);
+}
+
+/* "Outline and SEO": measured facts about the draft, folded away until wanted */
+.editor-details {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface-sunk);
+}
+
+.editor-details-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 10px 14px;
+  list-style: none;
+  cursor: pointer;
+  border-radius: var(--radius-m);
+}
+
+.editor-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.editor-details-summary::before {
+  content: "";
+  align-self: center;
+  width: 7px;
+  height: 7px;
+  margin-right: 2px;
+  border-right: 1.8px solid var(--ink-2);
+  border-bottom: 1.8px solid var(--ink-2);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+
+.editor-details[open] > .editor-details-summary::before {
+  transform: rotate(45deg);
+}
+
+.editor-details-summary:focus-visible {
+  box-shadow: var(--focus);
+  outline: none;
+}
+
+.editor-details-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.editor-details-meta {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.editor-details-body {
+  display: grid;
+  gap: 12px;
+  padding: 2px 14px 14px;
+  font-size: 14px;
+}
+
+/* Regenerate, with optional feedback */
+.editor-regen {
+  display: grid;
+  gap: 6px;
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-sunk);
+}
+
+.editor-regen .textarea {
+  min-height: 80px;
+}
+
+.editor-regen .field-hint {
+  margin: 0;
+}
+
+.editor-regen-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .editor-source {

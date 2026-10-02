@@ -73,15 +73,31 @@
       </div>
       <div class="editor-scroll">
         <label class="visually-hidden" for="editor-title">Title</label>
-        <input id="editor-title" class="editor-title" type="text" maxlength="160" readonly>
+        <textarea id="editor-title" class="editor-title" rows="1" maxlength="160" readonly></textarea>
+        <details class="editor-details" id="editor-details" hidden>
+          <summary class="editor-details-summary">
+            <span class="editor-details-label">Outline and SEO</span>
+            <span class="editor-details-meta" id="editor-details-meta"></span>
+          </summary>
+          <div class="editor-details-body" id="editor-details-body"></div>
+        </details>
         <article class="prose" id="editor-preview"></article>
         <label class="visually-hidden" for="editor-source">Post content (Markdown)</label>
         <textarea id="editor-source" class="editor-source" spellcheck="true" hidden></textarea>
       </div>
       <p class="editor-error" id="editor-error" role="alert" hidden></p>
-      <div class="editor-actions">
+      <form class="editor-regen" id="editor-regen" novalidate hidden>
+        <label class="field-label" for="editor-regen-text">What should change? <span class="field-optional">Optional</span></label>
+        <textarea id="editor-regen-text" class="textarea" rows="3" maxlength="1000" placeholder="For example: make the introduction more concise"></textarea>
+        <p class="field-hint">Leave it empty for a fresh draft from the same outline. The research isn't redone either way.</p>
+        <div class="editor-regen-actions">
+          <button type="submit" class="btn btn-primary" id="editor-regen-send">Regenerate draft</button>
+          <button type="button" class="btn btn-quiet" id="editor-regen-cancel">Cancel</button>
+        </div>
+      </form>
+      <div class="editor-actions" id="editor-actions">
         <button type="button" class="btn btn-secondary" id="editor-edit">Edit</button>
-        <button type="button" class="btn btn-secondary" id="editor-regenerate">Regenerate</button>
+        <button type="button" class="btn btn-secondary" id="editor-regenerate" aria-controls="editor-regen" aria-expanded="false">Regenerate</button>
         <button type="button" class="btn btn-primary editor-publish" id="editor-publish">Publish</button>
       </div>
     </aside>

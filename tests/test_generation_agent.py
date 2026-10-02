@@ -310,6 +310,9 @@ def test_approved_research_flows_into_generation(make_app):
     assert approval["stage"] == "content" and approval["message"].startswith("Content approval required")
     card = {section["title"]: section for section in approval["summary"]["sections"]}
     assert {"Outline", "Keywords", "Readability", "Content gaps covered", "For you to check"} <= set(card)
+    stats = {s["label"]: s["value"] for s in approval["summary"]["stats"]}
+    assert stats["keywords used"] == "2 of 2" and stats["sections"] == 5
+    assert card["For you to check"].get("open") == bool(stats["to check"])   # flagged points stay visible
 
     state = client.application.extensions["contentcrew.runner"].state_of(sid)
     assert state["content_approval_required"] is True and state["content_approved"] is False

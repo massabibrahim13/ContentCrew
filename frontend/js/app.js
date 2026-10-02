@@ -47,6 +47,8 @@ const state = {
   sending: false,
   statusTimer: null,
   offlineTimer: null,
+  lastBlogId: null,       // the newest draft in this chat
+  draftDetails: new Map(), // blog id -> its review summary (outline, keywords, readability...)
 };
 
 /* Workflow status -> what the top bar says. */
@@ -86,10 +88,19 @@ const editor = new BlogEditor(
     regenerate: $("editor-regenerate"),
     publish: $("editor-publish"),
     close: $("editor-close"),
+    actions: $("editor-actions"),
+    regenForm: $("editor-regen"),
+    regenText: $("editor-regen-text"),
+    regenSend: $("editor-regen-send"),
+    regenCancel: $("editor-regen-cancel"),
+    details: $("editor-details"),
+    detailsMeta: $("editor-details-meta"),
+    detailsBody: $("editor-details-body"),
   },
   {
     onSave: (blogId, changes) => api.updateBlog(blogId, changes),
-    onRegenerate: () => api.decideContent(state.sessionId, "regenerate").then(refreshStatusSoon),
+    onRegenerate: (_blog, feedback) =>
+      api.decideContent(state.sessionId, "regenerate", feedback || undefined).then(refreshStatusSoon),
     onPublish: () => api.decideContent(state.sessionId, "approve").then(refreshStatusSoon),
     onOpenChange: (open) => {
       els.workspace.dataset.editor = open ? "open" : "closed";
@@ -156,6 +167,13 @@ function handleEvent(event, { replay = false } = {}) {
 
   const stick = replay || followNewEvents || (event.type === "message" && event.role === "user");
   timeline.add(event);
+
+  // Each draft's review summary also feeds the editor's "Outline and SEO" panel.
+  if (event.type === "blog_ready") state.lastBlogId = event.blog_id;
+  if (event.type === "approval_required" && event.stage === "content" && state.lastBlogId) {
+    state.draftDetails.set(state.lastBlogId, event.summary);
+    if (editor.blogId === state.lastBlogId) editor.setDetails(event.summary);
+  }
   if (stick) {
     scrollToBottom();
     followNewEvents = true;
@@ -204,8 +222,7 @@ async function loadSession(sessionId) {
   try {
     const { session, events } = await api.getSession(sessionId);
     state.sessionId = session.id;
-    state.lastEventId = 0;
-    timeline.reset();
+    resetThread();
     for (const event of events) handleEvent(event, { replay: true });
     els.emptyState.hidden = !timeline.isEmpty;
     showWorkflowStatus({ workflow_status: session.status, running: false });
@@ -224,12 +241,18 @@ async function loadSession(sessionId) {
   }
 }
 
+function resetThread() {
+  state.lastEventId = 0;
+  state.lastBlogId = null;
+  state.draftDetails.clear();
+  timeline.reset();
+}
+
 function newChat() {
   closeStream();
   window.clearTimeout(state.statusTimer);
   state.sessionId = null;
-  state.lastEventId = 0;
-  timeline.reset();
+  resetThread();
   editor.close();
   els.emptyState.hidden = false;
   showComposerError("");
@@ -287,8 +310,7 @@ async function send(text) {
     const { session } = await api.sendMessage(message, state.sessionId);
     if (session.id !== state.sessionId) {
       state.sessionId = session.id;
-      state.lastEventId = 0;
-      timeline.reset();
+      resetThread();
       history.replaceState(null, "", `/app?session=${session.id}`);
     }
     if (!state.stream) openStream();
@@ -345,7 +367,7 @@ async function retry() {
 async function openDraft(blogId) {
   try {
     const { blog } = await api.getBlog(blogId);
-    editor.open(blog);
+    editor.open(blog, state.draftDetails.get(blogId) || null);
   } catch (err) {
     toast(err.message, "error");
   }

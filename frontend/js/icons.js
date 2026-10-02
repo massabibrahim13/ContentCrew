@@ -9,6 +9,7 @@ const PATHS = {
   doc: ["M6 3.5h6l3 3v10H6z", "M12 3.5v3h3", "M8.5 10h4", "M8.5 13h4"],
   close: ["M5.5 5.5l9 9", "M14.5 5.5l-9 9"],
   send: ["M4 10h11", "M10.5 5l5 5-5 5"],
+  chevron: ["M6 8l4 4 4-4"],
 };
 
 const NS = "http://www.w3.org/2000/svg";

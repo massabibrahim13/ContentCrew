@@ -344,7 +344,7 @@ def _approval_card(state: ContentCrewState, output: dict) -> dict:
         keyword_items.append(f"{term}: in {k['documents']} of {total} sources, {k['difficulty']}, {k['intent']}"
                              if k else term)
     sections = [
-        {"title": "Summary", "items": [output["research_summary"]]},
+        {"title": "Summary", "items": [output["research_summary"]], "open": True},   # shown without expanding
         {"title": "Competitors", "items": [f"{c['name']} ({'found by search' if c.get('source') == 'search' else 'from your context'})"
                                            for c in output["competitors"]]},
         sources,
@@ -372,6 +372,13 @@ def _approval_card(state: ContentCrewState, output: dict) -> dict:
     return {
         "headline": f'Research for "{output["topic"]}": {_plural(total, "source")} analyzed, '
                     f'{_plural(len(output["keywords"]), "keyword")} ranked.',
+        # The counts at the top of the card; the sections open with "Review strategy".
+        "stats": [
+            {"label": "competitors", "value": len(output["competitors"])},
+            {"label": "sources analyzed", "value": total},
+            {"label": "keywords", "value": len(output["keywords"])},
+            {"label": "content gaps", "value": len(output["content_gaps"])},
+        ],
         "sections": sections,
     }
 
@@ -382,7 +389,8 @@ def create_research_summary(state: ContentCrewState, runtime: Runtime[WorkflowCo
     with ctx.emit.node(AGENT, run_id, "create_research_summary", ANALYZING, "Writing up the research") as step:
         output = _research_output(state)
         card = _approval_card(state, output)
-        ResearchRepository(ctx.db).add_run(ctx.session_id, len(output["sources"]), len(output["keywords"]))
+        ResearchRepository(ctx.db).add_run(ctx.session_id, len(output["sources"]), len(output["keywords"]),
+                                           topic=output["topic"], summary=output["research_summary"])
         step.complete("Research summary ready for your review")
     ctx.emit.agent_completed(AGENT, run_id, "Research complete")
     return {"research_output": output, "research_summary": card, "current_node": "create_research_summary"}

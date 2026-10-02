@@ -87,7 +87,7 @@ def draft_review_card(state: ContentCrewState) -> dict:
 
     if plan:
         asked = f' You asked: "{plan["feedback"]}"' if plan.get("feedback") else ""
-        sections.append({"title": "This revision",
+        sections.append({"title": "This revision", "open": True,
                          "items": [f"Revision {plan['number']}: {REVISION_WORDS[plan['scope']](plan)}.{asked}"]})
     if outline.get("sections"):
         sections.append({"title": "Outline", "items": [s["heading"] for s in outline["sections"]]})
@@ -118,7 +118,7 @@ def draft_review_card(state: ContentCrewState) -> dict:
         sections.append({"title": "Content gaps covered", "items": covered,
                          "note": f"{len(covered)} of {len(gaps)} approved gaps are planned in the outline."})
     checks = list(dict.fromkeys(report.get("issues", []) + outline.get("notes", [])))
-    sections.append({"title": "For you to check",
+    sections.append({"title": "For you to check", "open": bool(checks),     # flagged points stay visible
                      "items": checks or ["Nothing flagged: no unsupported figures and no phrases copied from "
                                          "competitor pages."]})
     optimization = report.get("optimization") or {}
@@ -126,9 +126,16 @@ def draft_review_card(state: ContentCrewState) -> dict:
         items = list(optimization.get("fixed", [])) or [optimization.get("note", "")]
         sections.append({"title": "Optimization", "items": [i for i in items if i]})
 
+    approved = len(report.get("secondary_keywords", [])) + (1 if pk else 0)
     return {
         "headline": f'Draft ready: "{state.get("blog_title")}", {report.get("word_count", 0):,} words, '
                     f'{report.get("sections", 0)} sections.',
+        "stats": [
+            {"label": "words", "value": f"{report.get('word_count', 0):,}"},
+            {"label": "sections", "value": report.get("sections", 0)},
+            {"label": "keywords used", "value": f"{len(report.get('keywords_found', []))} of {approved}"},
+            {"label": "to check", "value": len(checks)},
+        ],
         "sections": sections,
     }
 

@@ -178,6 +178,21 @@ def test_without_search_or_competitors_the_research_says_so(make_app):
     assert sources["items"] == [] and "No competitor pages could be read" in sources["note"]
 
 
+def test_research_card_counts_and_the_latest_summary_in_the_context(make_app):
+    client = make_app(llm=fakes.FakeLLM()).test_client()
+    client.put("/api/context", json=SAMPLE)
+    sid = client.post("/api/chat", json={"message": "Write me a blog about Agentic AI"}).get_json()["session"]["id"]
+
+    summary = events(client, sid, "approval_required")[-1]["summary"]
+    stats = {s["label"]: s["value"] for s in summary["stats"]}
+    assert stats == {"competitors": 3, "sources analyzed": 3, "keywords": stats["keywords"], "content gaps": 2}
+    assert [s["title"] for s in summary["sections"] if s.get("open")] == ["Summary"]   # the rest folds away
+
+    latest = client.get("/api/context").get_json()["research"]["latest"]
+    assert latest["topic"] == "Agentic AI"
+    assert latest["summary"] == "Competitors explain agentic AI well but skip how approval works in practice."
+
+
 def test_research_approval_is_enforced_by_the_backend(make_app):
     client = make_app(llm=fakes.FakeLLM()).test_client()
     client.put("/api/context", json=SAMPLE)

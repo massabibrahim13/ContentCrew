@@ -123,7 +123,10 @@ def tool_completed_event(tool: str, agent: str, run_id: str, node: Optional[str]
 def approval_required_event(stage: str, summary: dict[str, Any], message: str = "") -> dict:
     """
     `summary` is rendered by the approval card:
-        {"headline": str, "sections": [{"title": str, "items": [str, ...], "note": str?}, ...]}
+        {"headline": str,
+         "stats": [{"label": str, "value": str | int}, ...]?,          counts shown at the top
+         "sections": [{"title": str, "items": [str, ...], "note": str?,
+                       "open": bool?}, ...]}                          open = visible without expanding
     """
     return {"type": "approval_required", "stage": _check(stage, APPROVAL_STAGES, "stage"),
             "message": message, "summary": summary}

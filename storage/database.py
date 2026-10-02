@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS research_runs (
     session_id          TEXT REFERENCES sessions(id) ON DELETE CASCADE,
     articles_analyzed   INTEGER NOT NULL DEFAULT 0,
     keywords_discovered INTEGER NOT NULL DEFAULT 0,
+    topic               TEXT,                     -- Phase 6: shown with the latest summary
+    summary             TEXT,                     -- Phase 6: the research summary, in plain words
     created_at          TEXT NOT NULL
 );
 """
@@ -117,6 +119,9 @@ class Database:
         added = {
             # Phase 3: which LangGraph thread (checkpoint history) belongs to the chat's current run
             ("sessions", "graph_thread_id"): "TEXT",
+            # Phase 6: the latest research summary in the left panel
+            ("research_runs", "topic"): "TEXT",
+            ("research_runs", "summary"): "TEXT",
         }
         for (table, column), kind in added.items():
             existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}

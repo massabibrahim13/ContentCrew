@@ -42,6 +42,14 @@ function competitorSection(competitors) {
   );
 }
 
+function latestSummary(latest) {
+  if (!latest?.summary) return null;
+  return h("div", { class: "ctx-research-latest" },
+    h("h4", { class: "ctx-label" }, latest.topic ? `Latest: ${latest.topic}` : "Latest research"),
+    h("p", { class: "ctx-research-summary", title: latest.summary }, latest.summary),
+  );
+}
+
 function researchSection(research) {
   const ran = Boolean(research?.last_research_at);
   return section(
@@ -51,7 +59,8 @@ function researchSection(research) {
       h("div", {}, h("dt", {}, "Keywords discovered"), h("dd", {}, research?.keywords_discovered ?? 0)),
       h("div", {}, h("dt", {}, "Last research"), h("dd", {}, ran ? formatDate(research.last_research_at) : "Never")),
     ),
-    ran ? null : h("p", { class: "ctx-empty" }, "These numbers fill in after the Analysis Agent's first run."),
+    ran ? latestSummary(research.latest)
+        : h("p", { class: "ctx-empty" }, "These numbers fill in after the Analysis Agent's first run."),
   );
 }
 

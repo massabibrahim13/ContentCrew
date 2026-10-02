@@ -47,6 +47,9 @@ class CompanyRepository:
                 FROM research_runs
                 """
             ).fetchone()
+            latest = conn.execute(
+                "SELECT topic, summary, created_at FROM research_runs ORDER BY created_at DESC, id DESC LIMIT 1"
+            ).fetchone()
 
         company = None
         if row:
@@ -64,7 +67,7 @@ class CompanyRepository:
             "onboarded": company is not None,
             "company": company,
             "competitors": [dict(c) for c in competitors],
-            "research": dict(research),
+            "research": {**dict(research), "latest": dict(latest) if latest else None},
         }
 
     def is_onboarded(self) -> bool:
@@ -295,12 +298,14 @@ class ResearchRepository:
     def __init__(self, db: Database):
         self.db = db
 
-    def add_run(self, session_id: str, articles_analyzed: int, keywords_discovered: int) -> None:
+    def add_run(self, session_id: str, articles_analyzed: int, keywords_discovered: int,
+                topic: str | None = None, summary: str | None = None) -> None:
         with self.db.connect() as conn:
             conn.execute(
                 """
-                INSERT INTO research_runs (session_id, articles_analyzed, keywords_discovered, created_at)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO research_runs (session_id, articles_analyzed, keywords_discovered, topic, summary,
+                                           created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (session_id, articles_analyzed, keywords_discovered, utc_now()),
+                (session_id, articles_analyzed, keywords_discovered, topic, summary, utc_now()),
             )

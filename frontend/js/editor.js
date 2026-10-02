@@ -3,12 +3,18 @@
  *
  * Closed until the Generation Agent reports a draft (a `blog_ready` event).
  * Shows the draft rendered, lets the user edit the Markdown, and exposes the
- * three actions from the design: Edit, Regenerate, Publish. Publishing is a
- * two-step click and goes through the content-approval endpoint, so the
- * server decides whether the post can go out.
+ * three actions from the design: Edit, Regenerate, Publish.
+ *
+ * - Publishing is a two-step click and goes through the content-approval
+ *   endpoint, so the server decides whether the post can go out.
+ * - Regenerate opens a small form for optional feedback ("make the introduction
+ *   more concise"); the Generation Agent then redoes only what that's about.
+ * - "Outline and SEO" shows the measured facts about this draft (the same ones
+ *   as the approval card in the chat), folded away until the user wants them.
  */
 
 import { renderMarkdown } from "./markdown.js";
+import { renderSections } from "./summary.js";
 
 const CONFIRM_MS = 5000;
 
@@ -23,13 +29,28 @@ export class BlogEditor {
     this.blog = null;
     this.mode = "preview";
     this.confirmTimer = null;
+    this.busy = false;
 
     els.close.addEventListener("click", () => this.close());
     els.edit.addEventListener("click", () => this.#toggleEdit());
-    els.regenerate.addEventListener("click", () => this.#regenerate());
+    els.regenerate.addEventListener("click", () => this.#showRegenerate(true));
+    els.regenCancel.addEventListener("click", () => this.#showRegenerate(false));
+    els.regenForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.#regenerate();
+    });
     els.publish.addEventListener("click", () => this.#publish());
-    els.title.addEventListener("input", () => this.#markDirty());
+    els.title.addEventListener("input", () => {
+      this.#fitTitle();
+      this.#markDirty();
+    });
+    els.title.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") e.preventDefault();      // a title is one line, even though it wraps
+    });
     els.source.addEventListener("input", () => this.#markDirty());
+    // Refit the title whenever its width changes (panel opening, window resizing).
+    if ("ResizeObserver" in window) new ResizeObserver(() => this.#fitTitle()).observe(els.title);
+    else window.addEventListener("resize", () => this.#fitTitle());
   }
 
   get isOpen() {
@@ -40,16 +61,20 @@ export class BlogEditor {
     return this.blog?.id ?? null;
   }
 
-  open(blog) {
+  open(blog, details = null) {
+    const sameBlog = this.blog?.id === blog.id;
     this.blog = blog;
     this.dirty = false;
     this.els.title.value = blog.title;
     this.els.source.value = blog.content;
     this.#setMode("preview");
+    this.#showRegenerate(false);
+    if (!sameBlog || details) this.setDetails(details);
     this.#renderStatus();
     this.setError("");
     this.els.panel.hidden = false;
-    this.handlers.onOpenChange?.(true);
+    this.handlers.onOpenChange?.(true);       // the layout changes first, then the title is measured
+    this.#fitTitle();
     this.els.panel.focus({ preventScroll: true });
   }
 
@@ -65,14 +90,37 @@ export class BlogEditor {
     this.els.error.hidden = !message;
   }
 
+  /** The approval summary for this draft: {stats, sections}. Null hides the panel. */
+  setDetails(summary) {
+    const { details, detailsMeta, detailsBody } = this.els;
+    if (!summary || !Array.isArray(summary.sections) || !summary.sections.length) {
+      details.hidden = true;
+      detailsBody.replaceChildren();
+      return;
+    }
+    const stats = summary.stats || [];
+    const pick = (label) => stats.find((s) => s.label === label)?.value;
+    const meta = [
+      pick("words") && `${pick("words")} words`,
+      pick("keywords used") && `${pick("keywords used")} keywords`,
+      pick("to check") ? `${pick("to check")} to check` : null,
+    ].filter(Boolean);
+    detailsMeta.textContent = meta.join(" · ");          // the counts, in one quiet line
+    detailsBody.replaceChildren(...renderSections(summary.sections));
+    details.hidden = false;
+  }
+
   // -- internals ------------------------------------------------------------
 
   #renderStatus() {
     const published = this.blog?.status === "published";
     this.els.status.textContent = published ? "Published" : this.dirty ? "Unsaved changes" : "Draft";
     this.els.status.dataset.state = published ? "published" : this.dirty ? "dirty" : "draft";
-    for (const button of [this.els.edit, this.els.regenerate, this.els.publish]) button.disabled = published;
+    for (const button of [this.els.edit, this.els.regenerate, this.els.publish]) {
+      button.disabled = published || this.busy;
+    }
     this.els.publish.textContent = published ? "Published" : "Publish";
+    if (published) this.#showRegenerate(false);
   }
 
   #setMode(mode) {
@@ -86,6 +134,15 @@ export class BlogEditor {
     else this.els.source.focus();
   }
 
+  /** The title wraps instead of being cut off: grow the field to fit it. */
+  #fitTitle() {
+    const title = this.els.title;
+    if (this.els.panel.hidden) return;
+    title.style.height = "auto";
+    const height = `${title.scrollHeight}px`;
+    if (title.style.height !== height) title.style.height = height;
+  }
+
   #markDirty() {
     this.dirty = true;
     this.#renderStatus();
@@ -96,7 +153,7 @@ export class BlogEditor {
     this.#setBusy(true);
     try {
       const { blog } = await this.handlers.onSave(this.blog.id, {
-        title: this.els.title.value,
+        title: this.els.title.value.replace(/\s*\n\s*/g, " ").trim(),
         content: this.els.source.value,
       });
       this.blog = blog;
@@ -104,6 +161,7 @@ export class BlogEditor {
       this.els.source.value = blog.content;
       this.dirty = false;
       this.setError("");
+      this.#fitTitle();
       return true;
     } catch (err) {
       const fields = err.fields || {};
@@ -123,11 +181,29 @@ export class BlogEditor {
     if (await this.#save()) this.#setMode("preview");
   }
 
+  #showRegenerate(show) {
+    const { regenForm, regenText, actions, regenerate } = this.els;
+    regenForm.hidden = !show;
+    actions.hidden = show;
+    regenerate.setAttribute("aria-expanded", String(show));
+    if (show) {
+      this.#resetConfirm();
+      regenText.focus();
+    } else {
+      regenText.value = "";
+    }
+  }
+
   async #regenerate() {
+    // Save first: a targeted revision starts from the version in the editor.
+    if (!(await this.#save())) return;
+    if (this.mode === "edit") this.#setMode("preview");
+    const feedback = this.els.regenText.value.trim();
     this.#setBusy(true);
     try {
-      await this.handlers.onRegenerate(this.blog);
+      await this.handlers.onRegenerate(this.blog, feedback || null);
       this.setError("");
+      this.#showRegenerate(false);
     } catch (err) {
       this.setError(err.message);
     } finally {
@@ -167,7 +243,9 @@ export class BlogEditor {
   }
 
   #setBusy(busy) {
-    for (const button of [this.els.edit, this.els.regenerate, this.els.publish]) button.disabled = busy;
+    this.busy = busy;
+    const buttons = [this.els.edit, this.els.regenerate, this.els.publish, this.els.regenSend, this.els.regenCancel];
+    for (const button of buttons) button.disabled = busy;
     this.els.panel.setAttribute("aria-busy", busy ? "true" : "false");
   }
 }

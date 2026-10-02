@@ -11,6 +11,7 @@
 
 import { h, formatTime } from "./dom.js";
 import { icon } from "./icons.js";
+import { renderSections, renderStats } from "./summary.js";
 
 export const AGENTS = {
   supervisor: { name: "Supervisor Agent", mark: "S" },
@@ -37,14 +38,16 @@ const STAGES = {
     title: "Research and content strategy",
     question: "Approve this research and content strategy?",
     approve: "Approve and continue",
-    other: { decision: "modify", label: "Modify" },
+    other: { decision: "modify", label: "Request changes" },
+    review: ["Review strategy", "Hide strategy"],
   },
   content: {
     title: "Generated draft",
-    question: "Review the draft in the editor and publish it, or type what to change in the chat " +
-      "(for example: make the introduction more concise).",
+    question: "Publish it from the editor, or ask for changes with Regenerate. You can also type " +
+      "them here, for example: make the introduction more concise.",
     approve: null, // the editor's Publish button is the approval
     other: null,
+    review: ["Review details", "Hide details"],
   },
 };
 
@@ -313,14 +316,30 @@ export class Timeline {
     const summary = event.summary || {};
     const error = h("p", { class: "approval-error", role: "alert", hidden: true });
 
-    const sections = (summary.sections || []).map((section) =>
-      h("section", { class: "approval-section" },
-        h("h4", {}, section.title),
-        Array.isArray(section.items) && section.items.length
-          ? h("ul", {}, section.items.map((item) => h("li", {}, item)))
-          : null,
-        section.note ? h("p", { class: "approval-note" }, section.note) : null,
-      ));
+    // Compact card: counts at the top, the few sections marked "open" (the summary,
+    // anything flagged for you), and the rest behind "Review strategy". Approvals
+    // saved before stats existed are shown in full, as they were.
+    const compact = Array.isArray(summary.stats) && summary.stats.length > 0;
+    const all = summary.sections || [];
+    const shown = compact ? all.filter((s) => s.open) : all;
+    const folded = compact ? all.filter((s) => !s.open) : [];
+    let review = null;
+    if (folded.length) {
+      const detailsId = `approval-details-${event.id}`;
+      const details = h("div", { class: "approval-sections approval-details", id: detailsId, hidden: true },
+        renderSections(folded));
+      const label = h("span", {}, stage.review[0]);
+      const toggle = h("button", {
+        type: "button", class: "approval-toggle", "aria-expanded": "false", "aria-controls": detailsId,
+        onclick: () => {
+          const open = details.hidden;
+          details.hidden = !open;
+          toggle.setAttribute("aria-expanded", String(open));
+          label.textContent = stage.review[open ? 1 : 0];
+        },
+      }, label, icon("chevron", { size: 16 }));
+      review = [toggle, details];
+    }
 
     const actions = h("div", { class: "approval-actions" });
     let modifyForm = null;
@@ -374,8 +393,10 @@ export class Timeline {
         h("p", { class: "approval-stage" }, stage.title),
       ),
       event.message ? h("p", { class: "approval-message" }, event.message) : null,
-      summary.headline ? h("p", { class: "approval-headline" }, summary.headline) : null,
-      sections.length ? h("div", { class: "approval-sections" }, sections) : null,
+      compact ? renderStats(summary.stats, "summary-stats approval-stats")
+              : summary.headline ? h("p", { class: "approval-headline" }, summary.headline) : null,
+      shown.length ? h("div", { class: "approval-sections" }, renderSections(shown)) : null,
+      review,
       h("p", { class: "approval-question" }, stage.question),
       actions, modifyForm, error, outcome,
     );
