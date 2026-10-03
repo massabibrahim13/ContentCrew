@@ -21,17 +21,31 @@ architecture spec and the source of truth for every decision in this repo.
 
 The whole flow, step by step, is in [docs/END_TO_END.md](docs/END_TO_END.md).
 
-## Run it (Windows)
+## Try it on your computer
+
+You need Python 3.11 or newer. Download this repository (**Code → Download ZIP**, then unzip it)
+or clone it, open a terminal in its folder, and run:
 
 ```powershell
-cd D:\Projects\contentcrew
+# Windows
+python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-copy .env.example .env      # first time only; then add your keys
+copy .env.example .env      # then open .env and add your free keys (below)
 python app.py
 ```
 
-Open http://127.0.0.1:5000. Run the tests with `python -m pytest`.
+```bash
+# macOS / Linux
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env        # then open .env and add your free keys (below)
+python app.py
+```
+
+Open http://127.0.0.1:5000, add your company (or press **Fill in the sample company**), and ask
+for a post. Next time, only the activate line and `python app.py` are needed. Run the tests with `python -m pytest`.
 Print the workflow graph, generated from the code, with `python -m graph.workflow`.
 
 **Everything is free.** Two optional keys, both free with no credit card:
@@ -342,7 +356,9 @@ contentcrew/
 
 ## License
 
-Copyright (c) 2026 Massab Ibrahim. All rights reserved.
+Copyright (c) 2026 Massab Ibrahim. Licensed under the [Elastic License 2.0](LICENSE).
 
-This code is public to read, not to use. You may not deploy, host, copy, modify or redistribute
-it, or submit it as your own work, without written permission. See [LICENSE](LICENSE).
+You're welcome to download ContentCrew, run it on your own computer with your own free keys,
+and change it however you like, for personal or business use. What the license doesn't allow is
+offering it to other people as a hosted service, such as deploying it on your domain for others
+to use. Keep the copyright and license notices in any copy you share.
