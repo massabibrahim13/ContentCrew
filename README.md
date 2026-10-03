@@ -339,3 +339,10 @@ contentcrew/
 - Add a password before putting the app online (there are no user accounts yet). Free hosting
   options for a small Flask app exist, but only once that's in place.
 - Optional: stream the draft as it's written.
+
+## License
+
+Copyright (c) 2026 Massab Ibrahim. All rights reserved.
+
+This code is public to read, not to use. You may not deploy, host, copy, modify or redistribute
+it, or submit it as your own work, without written permission. See [LICENSE](LICENSE).
