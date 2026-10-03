@@ -168,6 +168,27 @@ def test_serper_errors_are_explained(monkeypatch):
     assert result.status == "error" and "rejected" in result.message
 
 
+def test_a_rejected_key_is_remembered_and_not_retried(monkeypatch, caplog):
+    sent = []
+    monkeypatch.setattr(google_search.requests, "post",
+                        lambda *a, **k: sent.append(1) or FakeResponse(401, {"detail": {"error": "Invalid API key"}}))
+    settings = load_settings(search_provider="tavily", search_api_key="tvly-wrong")
+    first = google_search.search("x", settings)
+    assert first.status == "error" and "rejected" in first.message and "start with" not in first.message
+    assert "Invalid API key" in caplog.text and "tvly-wrong" not in caplog.text    # reason logged, key never
+
+    again = google_search.search("y", settings)
+    assert again.status == "not_configured" and "rejected" in again.message and len(sent) == 1
+    assert not google_search.is_configured(settings)
+    assert google_search.is_configured(load_settings(search_provider="tavily", search_api_key="tvly-fixed"))
+
+
+def test_a_tavily_key_without_its_prefix_gets_a_hint(monkeypatch):
+    monkeypatch.setattr(google_search.requests, "post", lambda *a, **k: FakeResponse(401, {}))
+    result = google_search.search("x", load_settings(search_provider="tavily", search_api_key='"tvly-quoted"'))
+    assert "Tavily keys start with tvly-" in result.message
+
+
 # --- Analysis tools ----------------------------------------------------------
 
 def test_keyword_analysis_is_labelled_heuristic_and_has_no_invented_metrics():

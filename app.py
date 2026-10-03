@@ -112,6 +112,10 @@ def _register_pages(app: Flask, db: Database) -> None:
     def published_post(slug: str):
         return page("post.html")
 
+    # POST /blog: the blog API the Publish Blog tool calls (same handler as POST /api/blog).
+    from api.blog_routes import publish_blog
+    app.add_url_rule("/blog", endpoint="blog_api_publish", view_func=publish_blog, methods=["POST"])
+
     @app.get("/favicon.ico")
     def favicon():
         return send_from_directory(FRONTEND_DIR / "assets", "favicon.svg", mimetype="image/svg+xml")

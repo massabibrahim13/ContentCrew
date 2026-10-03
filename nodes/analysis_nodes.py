@@ -120,7 +120,7 @@ def search_competitor_content(state: ContentCrewState, runtime: Runtime[Workflow
         if not agent.can_search:
             with ctx.emit.tool("google_search", "Searching for competitor articles") as call:
                 call.skip(agent.search(state["research_queries"][0]).message)
-            step.complete("Search isn't set up, so the agent will read competitor websites directly")
+            step.complete("Search isn't available, so the agent will read competitor websites directly")
             return {"used_search": False, "tool_events": [call.record], "current_node": "search_competitor_content"}
 
         tried = list(state.get("tried_queries", []))
@@ -149,8 +149,15 @@ def search_competitor_content(state: ContentCrewState, runtime: Runtime[Workflow
                 if item["url"] not in seen and item["domain"] != own:
                     seen.add(item["url"])
                     results.append(item)
+            if not agent.can_search:     # the provider rejected the key: the other searches would fail too
+                break
 
         new = len(results) - len(state.get("search_results", []))
+        if not agent.can_search and not results:
+            step.complete("Search stopped: the search API key was rejected, so the agent will read "
+                          "competitor websites directly")
+            return {"used_search": False, "tried_queries": tried, "tool_events": records,
+                    "current_node": "search_competitor_content"}
         step.complete(f"Found {_plural(new, 'candidate article')} from "
                       f"{_plural(len({r['domain'] for r in results}), 'site')}")
         return {"search_results": results, "used_search": True, "tried_queries": tried,
@@ -334,7 +341,7 @@ def _approval_card(state: ContentCrewState, output: dict) -> dict:
     if not total:
         sources["note"] = "No competitor pages could be read, so the post would rely on your company context alone."
     elif not output["used_search"]:
-        sources["note"] = "Web search isn't set up, so these are pages from the competitor websites in your context."
+        sources["note"] = "Web search wasn't available, so these are pages from the competitor websites in your context."
     elif state.get("coverage_note"):
         sources["note"] = f"Coverage: {state['coverage_note']}."
 

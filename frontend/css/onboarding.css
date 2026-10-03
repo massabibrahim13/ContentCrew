@@ -74,7 +74,7 @@
 }
 
 .ob-step:not(:disabled):hover {
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--hover-wash);
   color: var(--ink);
 }
 
@@ -109,7 +109,7 @@
 .ob-step[aria-current="step"] .ob-step-n {
   border-color: var(--brand);
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand);
 }
 
 .ob-sample {
@@ -204,7 +204,7 @@
 }
 
 .tag-remove:hover {
-  background: rgba(31, 81, 53, 0.14);
+  background: var(--brand-wash);
   color: var(--ink);
 }
 

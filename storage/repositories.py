@@ -117,7 +117,7 @@ class CompanyRepository:
 SESSION_FIELDS = {
     "title", "status", "graph_thread_id", "current_agent", "current_node", "approval_required",
     "research_approved", "content_approved", "blog_status", "publish_status",
-    "last_error",
+    "last_error", "current_blog_id",
 }
 
 

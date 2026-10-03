@@ -47,6 +47,8 @@ _VERB_ONLY = re.compile(r"^\s*(?:please\s+)?(?:write|create|draft|make|produce)\
 _TRAILING = re.compile(r"\s+for\s+(?:our|my|the)\s+(?:target\s+)?(?:audience|readers|customers)\s*$", re.IGNORECASE)
 _WRITING_WORDS = re.compile(r"\b(write|draft|blog|post|article|content|piece)\b", re.IGNORECASE)
 
+CANCELLED_REPLY = "Request cancelled. Nothing was written or published. Send a new request whenever you're ready."
+
 UNSUPPORTED_REPLY = (
     "I coordinate research-backed blog posts. Tell me what to write about, for example: "
     "Write me a blog about Agentic AI."
@@ -100,9 +102,18 @@ class Supervisor:
         return updated
 
     @staticmethod
+    def cancel(plan: list[PlanStep]) -> list[PlanStep]:
+        """After "Cancel request": finished steps stay done, everything else is skipped."""
+        updated = deepcopy(plan)
+        for step in updated:
+            if step["status"] != "done":
+                step["status"] = "skipped"
+        return updated
+
+    @staticmethod
     def decide_next(state: ContentCrewState) -> NextStep:
         """The routing rule. Checked by `route_task` every time work comes back to the Supervisor."""
-        if state.get("request_type") != "blog":
+        if state.get("request_type") != "blog" or state.get("cancelled"):
             return "end"
         if state.get("publish_status") == "published":
             return "end"

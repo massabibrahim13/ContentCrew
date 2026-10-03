@@ -259,8 +259,9 @@ def prepare_blog_review(state: ContentCrewState, runtime: Runtime[WorkflowContex
     run_id = state["current_run_id"]
     with ctx.emit.node(AGENT, run_id, "prepare_blog_review", GENERATING, "Saving the draft for review") as step:
         blog = BlogRepository(ctx.db).create_draft(ctx.session_id, state["blog_title"], state["blog_draft"])
-        ctx.emit.update_session(blog_status="ready")
-        ctx.emit.publish(blog_ready_event(blog["id"], blog["title"]))
+        # The new draft replaces the previous one: only this version can now be edited or published.
+        ctx.emit.update_session(blog_status="ready", current_blog_id=blog["id"])
+        ctx.emit.publish(blog_ready_event(blog["id"], blog["title"], run_id=run_id, node="prepare_blog_review"))
         number = state.get("revision_count", 0)
         step.complete("Draft saved and opened in the editor" + (f" (revision {number})" if number else ""))
     ctx.emit.agent_completed(AGENT, run_id, "Draft ready for your review")

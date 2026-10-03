@@ -13,7 +13,7 @@ from langgraph.runtime import Runtime
 from graph.context import WorkflowContext
 from graph.state import ContentCrewState, WorkflowStatus
 from services.events import new_id
-from supervisor.supervisor_agent import ROUTE_MESSAGES, UNSUPPORTED_REPLY, Supervisor
+from supervisor.supervisor_agent import CANCELLED_REPLY, ROUTE_MESSAGES, UNSUPPORTED_REPLY, Supervisor
 
 AGENT = "supervisor"
 ROUTE_STATUS = {
@@ -53,6 +53,11 @@ def route_task(state: ContentCrewState, runtime: Runtime[WorkflowContext]) -> di
     next_step = Supervisor.decide_next(state)
     update = {"next_step": next_step, "current_agent": AGENT, "current_node": "route_task"}
     if next_step == "end":
+        if state.get("cancelled"):
+            plan = Supervisor.cancel(state.get("plan", []))
+            emit.plan_updated(state.get("plan_run_id", ""), plan)
+            emit.message(AGENT, CANCELLED_REPLY)
+            update["plan"] = plan
         return update
 
     run_id = new_id("run")

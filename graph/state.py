@@ -18,7 +18,7 @@ a node is still running, before LangGraph has merged that node's update.
     REQUESTED -> PLANNING -> RESEARCHING -> ANALYZING
       -> WAITING_FOR_RESEARCH_APPROVAL -> GENERATING
       -> WAITING_FOR_CONTENT_APPROVAL -> PUBLISHING -> COMPLETED
-    (any step can move to FAILED)
+    (any step can move to FAILED; "Cancel request" at the research approval ends in CANCELLED)
 """
 
 from __future__ import annotations
@@ -38,6 +38,7 @@ class WorkflowStatus(str, Enum):
     WAITING_FOR_CONTENT_APPROVAL = "WAITING_FOR_CONTENT_APPROVAL"
     PUBLISHING = "PUBLISHING"
     COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"      # the human chose "Cancel request" at the research approval
     FAILED = "FAILED"
 
 
@@ -303,6 +304,7 @@ class ContentCrewState(TypedDict, total=False):
     # Human approval: research --------------------------------------------------
     research_approved: bool
     research_feedback: Optional[str]
+    cancelled: bool                    # "Cancel request": the Supervisor ends the run, nothing is written
 
     # Generation Agent ----------------------------------------------------------
     # It reads only `research_output` (what the human approved), never the

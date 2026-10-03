@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 
 from agents.policy import UNTRUSTED_CONTENT_RULES, as_search_result, as_source, escape
 from config import Settings
+from llm.structured import ask_structured
 from tools import ToolResult, competitor_analysis, google_search, keyword_analysis, web_scraper
 from tools.text import tokens
 
@@ -179,7 +180,7 @@ class AnalysisAgent:
     # -- decisions ------------------------------------------------------------
 
     def _ask(self, schema, prompt: str):
-        return self.llm.with_structured_output(schema).invoke([SystemMessage(SYSTEM_PROMPT), HumanMessage(prompt)])
+        return ask_structured(self.llm, schema, [SystemMessage(SYSTEM_PROMPT), HumanMessage(prompt)])
 
     def plan_queries(self, topic: str, company: dict, competitors: list[dict],
                      feedback: Optional[str] = None, avoid: tuple[str, ...] = ()) -> list[str]:

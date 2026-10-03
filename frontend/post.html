@@ -7,6 +7,7 @@
   <link rel="icon" href="/static/assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/css/base.css">
   <link rel="stylesheet" href="/static/css/post.css">
+  <script src="/static/js/theme.js"></script>
 </head>
 <body class="post-page">
   <header class="post-header">
@@ -14,7 +15,10 @@
       <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#1F5135"/><path d="M6.5 8h11M6.5 12h11M6.5 16h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="16.6" cy="16" r="1.9" fill="#E2A93B"/></svg>
       ContentCrew
     </a>
-    <a href="/app">Open the workspace</a>
+    <div class="header-actions">
+      <a href="/app">Open the workspace</a>
+      <button type="button" class="icon-btn theme-toggle" data-theme-toggle aria-label="Dark mode" aria-pressed="false" title="Switch to dark mode"><svg class="theme-icon-moon" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.4 12.4A6.8 6.8 0 0 1 7.6 3.6a6.8 6.8 0 1 0 8.8 8.8z"/></svg><svg class="theme-icon-sun" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.3"/><path d="M10 2.3v1.8M10 15.9v1.8M2.3 10h1.8M15.9 10h1.8M4.6 4.6l1.3 1.3M14.1 14.1l1.3 1.3M4.6 15.4l1.3-1.3M14.1 5.9l1.3-1.3"/></svg></button>
+    </div>
   </header>
   <main class="post">
     <p class="post-loading" id="post-status"><span class="spinner" aria-hidden="true"></span> Loading the post</p>

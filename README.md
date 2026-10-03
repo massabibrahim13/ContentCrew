@@ -16,7 +16,10 @@ architecture spec and the source of truth for every decision in this repo.
 | 3 | LangGraph workflow: Supervisor, Analysis and Generation agents, nodes, tools, human approvals | Done |
 | 4 | Analysis Agent as a real agent: competitor discovery, targeted search, source selection, a "search again?" loop, richer analysis, typed research output, node/tool events | Done |
 | 5 | Generation Agent: writes from the approved research, checks its own outline, measured SEO optimization, regeneration that redoes only what the feedback is about | Done |
-| 6 | Final frontend and integration polish | Next |
+| 6 | Workspace UI: compact approval cards, outline and SEO in the editor, regenerate with feedback, research summary | Done |
+| 7 | Integration: publishing through `POST /blog`, Cancel request, draft/approval consistency, exact status text, traceable events | Done |
+
+The whole flow, step by step, is in [docs/END_TO_END.md](docs/END_TO_END.md).
 
 ## Run it (Windows)
 
@@ -35,8 +38,8 @@ Print the workflow graph, generated from the code, with `python -m graph.workflo
 
 | Key in `.env` | Where to get it | What it unlocks |
 |---|---|---|
-| `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) | The language model (Llama 3.3 70B on Groq's free tier): writing, research planning, content-gap analysis |
-| `SEARCH_API_KEY` | [app.tavily.com](https://app.tavily.com) | Web search (1,000 free searches a month; each run uses up to 4) |
+| `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) | The language model (`openai/gpt-oss-120b` on Groq's free tier; set `LLM_MODEL` to it): writing, research planning, content-gap analysis |
+| `SEARCH_API_KEY` | [app.tavily.com](https://app.tavily.com) | Web search (1,000 free searches a month; a run uses about 5 to 10) |
 
 | You have | What works |
 |---|---|
@@ -116,6 +119,7 @@ graph TD;
 	create_research_summary --> request_research_approval;
 	request_research_approval -. approved .-> route_task;
 	request_research_approval -. modify .-> prepare_research;
+	request_research_approval -. rejected .-> route_task;
 	prepare_generation --> build_outline;
 	build_outline --> generate_blog;
 	generate_blog --> optimize_blog;
@@ -192,6 +196,14 @@ press **Regenerate** or type what you want in the chat. The agent picks the smal
 | "Add a section about pricing" | `build_outline`, then a new draft | the approved research |
 
 The research is never rerun. `revision_count` and `revision_history` record every round.
+
+**Download.** To put a post on your own website, use **Download** at the top of the editor:
+a web page (`.html`, which you can also open in Word) or Markdown (`.md`). The file holds exactly
+what the editor shows, including edits you haven't saved, and works for drafts and published posts.
+Publishing itself goes to the app's own blog (`POST /blog`, viewable at `/blog/<slug>`).
+
+**Dark mode.** The sun/moon button in every page's header switches between light and dark.
+The choice is remembered in your browser; until you pick one, the app follows your system setting.
 
 ### Live events
 
@@ -285,7 +297,7 @@ contentcrew/
 │   ├── keyword_analysis.py     heuristic keyword ranking; real metrics only from a provider
 │   ├── competitor_analysis.py  shared themes and headings across competitor pages
 │   ├── seo_analysis.py         measures a draft: keyword placement, readability, copied phrases, figures
-│   └── publish_blog.py         publishes through the blog backend (approval-checked)
+│   └── publish_blog.py         sends POST /blog over HTTP; the blog API checks approval, state and draft
 ├── graph/
 │   ├── state.py                ContentCrewState + workflow statuses
 │   ├── context.py              runtime context, StepFailed
@@ -300,7 +312,8 @@ contentcrew/
 ├── frontend/                   landing, onboarding, workspace, public post page
 ├── data/                       sample company; databases are created here
 ├── docs/SECURITY.md            how untrusted web content is contained
-└── tests/                      120 tests: tools, both agents, API, the full workflow
+├── docs/END_TO_END.md          the whole flow, from request to "Blog published successfully"
+└── tests/                      134 tests: tools, both agents, API, the full workflow, integration
 ```
 
 ## API
@@ -312,11 +325,12 @@ contentcrew/
 | GET | `/api/status?session_id=` | Agent, node, approval, generation (status, revisions, keywords), blog and publish status |
 | GET | `/api/sessions/<id>` | Session + all events |
 | GET | `/api/sessions/<id>/events` | Live events (Server-Sent Events) |
+| GET | `/api/sessions/<id>/trace` | Every step as flat rows: time, workflow, agent, node, tool, status, result |
 | POST | `/api/sessions/<id>/retry` | Run the failed step again |
-| POST | `/api/approval/research` | `{session_id, decision: approve or modify, feedback}` |
+| POST | `/api/approval/research` | `{session_id, decision: approve, modify or reject (Cancel request), feedback}` |
 | POST | `/api/approval/content` | `{session_id, decision: approve (Publish) or regenerate, feedback?}` |
-| GET / PATCH | `/api/blog/<id>` | Read or edit a draft |
-| POST | `/api/blog` | Publish (refused without the server-side approval) |
+| GET / PATCH | `/api/blog/<id>` | Read a draft, or edit the current one while it's in review |
+| POST | `/blog` | Publish. Called by the Publish Blog tool over HTTP; refused unless approved, at the publish step, current draft, not empty (alias `/api/blog`) |
 | GET | `/api/posts/<slug>` | A published post (shown at `/blog/<slug>`) |
 | GET | `/api/health` | Health and which integrations are configured |
 

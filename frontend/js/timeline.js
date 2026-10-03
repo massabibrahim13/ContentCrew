@@ -39,6 +39,7 @@ const STAGES = {
     question: "Approve this research and content strategy?",
     approve: "Approve and continue",
     other: { decision: "modify", label: "Request changes" },
+    cancel: ["Cancel request", "Confirm cancel"],    // a second click confirms, like Publish
     review: ["Review strategy", "Hide strategy"],
   },
   content: {
@@ -54,7 +55,7 @@ const STAGES = {
 export class Timeline {
   /**
    * @param {HTMLElement} root
-   * @param {{onApprove, onModify, onOpenDraft, onRetry}} handlers
+   * @param {{onApprove, onModify, onCancel, onOpenDraft, onRetry}} handlers
    */
   constructor(root, handlers) {
     this.root = root;
@@ -380,6 +381,24 @@ export class Timeline {
         feedback.focus();
       } }, stage.other.label));
     }
+    if (stage.cancel) {
+      let confirmTimer = null;
+      const cancel = h("button", { type: "button", class: "btn btn-quiet approval-cancel", onclick: () => {
+        if (!confirmTimer) {
+          cancel.textContent = stage.cancel[1];
+          cancel.classList.add("is-confirming");
+          confirmTimer = window.setTimeout(() => {
+            confirmTimer = null;
+            cancel.textContent = stage.cancel[0];
+            cancel.classList.remove("is-confirming");
+          }, 5000);
+          return;
+        }
+        window.clearTimeout(confirmTimer);
+        this.handlers.onCancel?.(event.stage);
+      } }, stage.cancel[0]);
+      actions.append(cancel);
+    }
     if (event.stage === "content" && this.lastBlog) {
       const blogId = this.lastBlog;
       actions.append(h("button", { type: "button", class: "btn btn-primary",
@@ -416,9 +435,10 @@ export class Timeline {
     const text = {
       approve: "Approved. The workflow continued.",
       modify: "Changes requested. The Analysis Agent is revising the research.",
-      regenerate: "Rewrite requested. The Generation Agent is drafting again.",
+      regenerate: "Changes requested. The Generation Agent is revising the draft.",
+      reject: "Request cancelled. Nothing was written or published.",
     }[event.decision] || "Decision recorded.";
-    card.outcome.replaceChildren(icon("check", { size: 14 }), text);
+    card.outcome.replaceChildren(icon(event.decision === "reject" ? "close" : "check", { size: 14 }), text);
     card.outcome.hidden = false;
     this.approvals.delete(event.stage);
     return card.root;
@@ -426,8 +446,14 @@ export class Timeline {
 
   #blogReady(event) {
     this.lastBlog = event.blog_id;
+    // A new draft replaces the previous one; the old entries stay, marked as older versions.
+    for (const old of this.root.querySelectorAll(".act-blog:not(.is-old)")) {
+      old.classList.add("is-old");
+      old.querySelector(".blog-label").textContent = "Older version: ";
+      old.querySelector("button").textContent = "View";
+    }
     return this.#item("act-blog", icon("doc", { size: 14 }),
-      h("p", {}, "Draft ready: ", h("strong", {}, event.title || "Untitled")),
+      h("p", {}, h("span", { class: "blog-label" }, "Draft ready: "), h("strong", {}, event.title || "Untitled")),
       h("button", { type: "button", class: "btn btn-secondary btn-sm",
         onclick: () => this.handlers.onOpenDraft(event.blog_id) }, "Open draft"),
     );

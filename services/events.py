@@ -17,11 +17,15 @@ node_completed     {agent, run_id, node, status, message}
 tool_started       {tool, agent, run_id, node, call_id, message}
 tool_completed     {tool, agent, run_id, node, call_id, status, message, result}
                    status: "completed" | "skipped" (not configured, nothing invented) | "failed"
-approval_required  {stage: "research" | "content", message, summary}
-approval_resolved  {stage, decision, feedback?}
-blog_ready         {blog_id, title}
-blog_published     {blog_id, title, slug}
+approval_required  {stage: "research" | "content", agent, node, message, summary}
+approval_resolved  {stage, agent, node, decision, feedback?}      decision "reject" = Cancel request
+blog_ready         {agent, node, run_id, blog_id, title}
+blog_published     {agent, node, run_id, blog_id, title, slug}
 error              {message, stage?, retryable}
+
+Every event a workflow run emits also carries `workflow_id` (its LangGraph
+thread), and the events table adds the session id and a timestamp, so a run can
+be reconstructed step by step (GET /api/sessions/<id>/trace).
 
 Only observable actions are recorded: what ran, with what result. Hidden model
 reasoning is never stored or shown.
@@ -120,7 +124,8 @@ def tool_completed_event(tool: str, agent: str, run_id: str, node: Optional[str]
             "status": _check(status, TOOL_STATUSES, "status"), "message": message, "result": result}
 
 
-def approval_required_event(stage: str, summary: dict[str, Any], message: str = "") -> dict:
+def approval_required_event(stage: str, summary: dict[str, Any], message: str = "",
+                            node: Optional[str] = None) -> dict:
     """
     `summary` is rendered by the approval card:
         {"headline": str,
@@ -129,23 +134,33 @@ def approval_required_event(stage: str, summary: dict[str, Any], message: str = 
                        "open": bool?}, ...]}                          open = visible without expanding
     """
     return {"type": "approval_required", "stage": _check(stage, APPROVAL_STAGES, "stage"),
+            "agent": "supervisor", "node": node or f"request_{stage}_approval",
             "message": message, "summary": summary}
 
 
 def approval_resolved_event(stage: str, decision: str, feedback: Optional[str] = None) -> dict:
     event = {"type": "approval_resolved", "stage": _check(stage, APPROVAL_STAGES, "stage"),
-             "decision": decision}
+             "agent": "supervisor", "node": f"request_{stage}_approval", "decision": decision}
     if feedback:
         event["feedback"] = feedback
     return event
 
 
-def blog_ready_event(blog_id: str, title: str) -> dict:
-    return {"type": "blog_ready", "blog_id": blog_id, "title": title}
+def blog_ready_event(blog_id: str, title: str, run_id: Optional[str] = None, node: Optional[str] = None) -> dict:
+    event = {"type": "blog_ready", "agent": "generation", "blog_id": blog_id, "title": title}
+    if run_id:
+        event["run_id"] = run_id
+    if node:
+        event["node"] = node
+    return event
 
 
-def blog_published_event(blog_id: str, title: str, slug: str) -> dict:
-    return {"type": "blog_published", "blog_id": blog_id, "title": title, "slug": slug}
+def blog_published_event(blog_id: str, title: str, slug: str, run_id: Optional[str] = None) -> dict:
+    event = {"type": "blog_published", "agent": "supervisor", "node": "publish_blog",
+             "blog_id": blog_id, "title": title, "slug": slug}
+    if run_id:
+        event["run_id"] = run_id
+    return event
 
 
 def error_event(message: str, stage: Optional[str] = None, retryable: bool = False) -> dict:
@@ -213,14 +228,17 @@ class WorkflowEmitter:
     browser) and, where it matters, updates the session row /api/status reads.
     """
 
-    def __init__(self, db: Database, session_id: str):
+    def __init__(self, db: Database, session_id: str, workflow_id: Optional[str] = None):
         self.session_id = session_id
+        self.workflow_id = workflow_id           # the LangGraph thread this run's state lives in
         self.events = EventRepository(db)
         self.sessions = SessionRepository(db)
         self.open_runs: dict[str, str] = {}      # run_id -> agent, for runs still working
         self.current: tuple[str, str, Optional[str]] = ("supervisor", "", None)
 
     def publish(self, event: dict) -> dict:
+        if self.workflow_id:
+            event = {**event, "workflow_id": self.workflow_id}
         return self.events.add(self.session_id, event)
 
     def update_session(self, **changes) -> None:

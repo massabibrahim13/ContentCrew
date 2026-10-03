@@ -602,7 +602,7 @@
 .act-agent .act-node,
 .act-say .act-node {
   border-radius: 8px;
-  color: #fff;
+  color: var(--on-agent);
   background: var(--agent-color, var(--ink-2));
 }
 
@@ -861,7 +861,7 @@
   gap: 12px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(214, 160, 60, 0.45);
+  border-top: 1px solid var(--attention-line-soft);
 }
 
 /* Summary blocks (shared by the approval cards and the editor's details panel) */
@@ -922,7 +922,7 @@
 }
 
 .approval-stats .summary-stat {
-  border: 1px solid rgba(214, 160, 60, 0.4);
+  border: 1px solid var(--attention-line-soft);
 }
 
 .approval-toggle {
@@ -965,6 +965,26 @@
 
 .approval.is-resolved .approval-toggle {
   color: var(--ink-2);
+}
+
+.approval-cancel {
+  margin-left: auto;          /* away from the two main choices */
+  color: var(--ink-2);
+}
+
+.approval-cancel.is-confirming {
+  color: var(--danger);
+  background: var(--danger-tint);
+}
+
+.act-blog.is-old p,
+.act-blog.is-old .act-node {
+  color: var(--ink-3);
+}
+
+.act-blog.is-old .act-node {
+  border-color: var(--line-strong);
+  background: var(--surface-sunk);
 }
 
 .approval.is-resolved .approval-stats .summary-stat {
@@ -1039,7 +1059,7 @@
 
 .act-published .act-node {
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand);
 }
 
 .act-published .act-body {
@@ -1096,8 +1116,86 @@
   color: var(--brand);
 }
 
-.editor-head .icon-btn {
+.editor-status[data-state="old"] {
+  background: var(--surface-sunk);
+  color: var(--ink-3);
+}
+
+.editor-status[data-state="locked"] {
+  background: var(--attention-tint);
+  color: var(--attention);
+}
+
+/* Why the editor is read-only right now (older version, or the agents are working) */
+.editor-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-sunk);
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+
+.editor-note p {
+  flex: 1 1 220px;
+}
+
+/* Download: a small menu under the button, in the panel's top-right corner */
+.editor-download {
+  position: relative;
   margin-left: auto;
+}
+
+.download-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 32px));
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+}
+
+.download-option {
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px 9px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.download-option:hover,
+.download-option:focus-visible {
+  background: var(--surface-sunk);
+}
+
+.download-option-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.download-ext {
+  margin-left: 2px;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.download-option-hint {
+  font-size: 12.5px;
+  color: var(--ink-3);
 }
 
 .editor-scroll {
@@ -1225,65 +1323,6 @@
   resize: vertical;
 }
 
-.prose {
-  max-width: 64ch;
-  margin-top: 14px;
-  font-family: var(--font-read);
-  font-size: 17px;
-  line-height: 1.68;
-  color: #2a302c;
-}
-
-.prose h2 {
-  margin-top: 1.5em;
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.25;
-  color: var(--ink);
-}
-
-.prose h3 {
-  margin-top: 1.3em;
-  font-size: 18.5px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.prose p,
-.prose ul,
-.prose ol,
-.prose blockquote {
-  margin-top: 0.75em;
-}
-
-.prose ul,
-.prose ol {
-  padding-left: 1.3em;
-}
-
-.prose ul {
-  list-style: disc;
-}
-
-.prose ol {
-  list-style: decimal;
-}
-
-.prose blockquote {
-  padding-left: 14px;
-  border-left: 2px solid var(--line-strong);
-  font-style: italic;
-  color: var(--ink-2);
-}
-
-.prose code {
-  padding: 1px 4px;
-  border-radius: 4px;
-  background: var(--surface-sunk);
-  font-family: var(--font-code);
-  font-size: 0.85em;
-}
-
 .editor-error {
   padding: 10px 22px 0;
   font-size: 14px;
@@ -1309,7 +1348,7 @@
   position: fixed;
   inset: 56px 0 0;
   z-index: 25;
-  background: rgba(27, 32, 29, 0.3);
+  background: var(--scrim);
 }
 
 @media (max-width: 1180px) {

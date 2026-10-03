@@ -13,6 +13,7 @@ The LangGraph workflow: which node runs after which.
                                -> request_research_approval   [PAUSE for the human]
                                      approve -> route_task
                                      modify  -> prepare_research
+                                     reject  -> route_task -> END   ("Cancel request")
 
     route_task --generation--> prepare_generation -> build_outline -> generate_blog
                                -> optimize_blog -> prepare_blog_review
@@ -105,6 +106,7 @@ def build_workflow(checkpointer=None):
     builder.add_conditional_edges("request_research_approval", approval_nodes.after_research_approval, {
         "approved": "route_task",
         "modify": "prepare_research",
+        "rejected": "route_task",              # the Supervisor sees the cancellation and ends the run
     })
 
     # Generation Agent, then the content approval checkpoint

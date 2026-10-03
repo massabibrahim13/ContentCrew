@@ -128,7 +128,7 @@ class FakeLLM:
             "RevisionDecision": _revision_decision,
         }
 
-    def with_structured_output(self, schema):
+    def with_structured_output(self, schema, **_method):
         return _Structured(self, schema)
 
     def invoke(self, messages):

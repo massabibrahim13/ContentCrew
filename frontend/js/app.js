@@ -47,8 +47,9 @@ const state = {
   sending: false,
   statusTimer: null,
   offlineTimer: null,
-  lastBlogId: null,       // the newest draft in this chat
+  lastBlogId: null,       // the newest draft in this chat: the only one that can be edited or published
   draftDetails: new Map(), // blog id -> its review summary (outline, keywords, readability...)
+  contentPending: false,  // is the newest draft waiting for review right now?
 };
 
 /* Workflow status -> what the top bar says. */
@@ -57,13 +58,42 @@ const STATUS_LABELS = {
   PLANNING: ["Supervisor is planning", "working"],
   RESEARCHING: ["Analysis Agent is researching", "working"],
   ANALYZING: ["Analysis Agent is analyzing", "working"],
-  WAITING_FOR_RESEARCH_APPROVAL: ["Waiting for your approval", "waiting"],
+  WAITING_FOR_RESEARCH_APPROVAL: ["Research approval required", "waiting"],
   GENERATING: ["Generation Agent is writing", "working"],
-  WAITING_FOR_CONTENT_APPROVAL: ["Draft ready for your review", "waiting"],
+  WAITING_FOR_CONTENT_APPROVAL: ["Content approval required", "waiting"],
   PUBLISHING: ["Publishing", "working"],
   COMPLETED: ["Done", "done"],
+  CANCELLED: ["Request cancelled", "done"],
   FAILED: ["Stopped with an error", "failed"],
 };
+
+/* While a node runs, the top bar names the agent and the step: "Analysis Agent → Keyword Analysis". */
+const AGENT_NAMES = { supervisor: "Supervisor", analysis: "Analysis Agent", generation: "Generation Agent" };
+const STEP_LABELS = {
+  create_plan: "Planning",
+  route_task: "Routing",
+  prepare_research: "Research Planning",
+  discover_competitors: "Competitor Discovery",
+  search_competitor_content: "Web Search",
+  scrape_content: "Web Scraping",
+  analyze_competitors: "Competitor Analysis",
+  analyze_keywords: "Keyword Analysis",
+  identify_content_gaps: "Content Gaps",
+  create_research_summary: "Research Summary",
+  prepare_generation: "Reading the Research",
+  build_outline: "Outline",
+  generate_blog: "Writing",
+  optimize_blog: "SEO Optimization",
+  prepare_blog_review: "Saving the Draft",
+  plan_revision: "Revision Plan",
+  revise_blog: "Revising Sections",
+  publish_blog: "Publishing",
+};
+
+function stepLabel(agent, node) {
+  if (!AGENT_NAMES[agent] || !STEP_LABELS[node]) return null;
+  return `${AGENT_NAMES[agent]} → ${STEP_LABELS[node]}`;
+}
 
 // ---------------------------------------------------------------------------
 // Timeline + editor
@@ -72,6 +102,7 @@ const STATUS_LABELS = {
 const timeline = new Timeline($("timeline"), {
   onApprove: (stage) => decide(stage, "approve"),
   onModify: (stage, feedback) => decide(stage, "modify", feedback),
+  onCancel: (stage) => decide(stage, "reject"),
   onOpenDraft: (blogId) => openDraft(blogId),
   onRetry: () => retry(),
 });
@@ -96,9 +127,16 @@ const editor = new BlogEditor(
     details: $("editor-details"),
     detailsMeta: $("editor-details-meta"),
     detailsBody: $("editor-details-body"),
+    note: $("editor-note"),
+    noteText: $("editor-note-text"),
+    noteAction: $("editor-note-action"),
+    download: $("editor-download"),
+    downloadToggle: $("editor-download-toggle"),
+    downloadMenu: $("editor-download-menu"),
   },
   {
     onSave: (blogId, changes) => api.updateBlog(blogId, changes),
+    onOpenLatest: () => state.lastBlogId && openDraft(state.lastBlogId),
     onRegenerate: (_blog, feedback) =>
       api.decideContent(state.sessionId, "regenerate", feedback || undefined).then(refreshStatusSoon),
     onPublish: () => api.decideContent(state.sessionId, "approve").then(refreshStatusSoon),
@@ -124,10 +162,31 @@ function showWorkflowStatus(status) {
     return;
   }
   let [label, tone] = STATUS_LABELS[status.workflow_status] || [status.workflow_status, "idle"];
+  if (tone === "working") label = stepLabel(status.current_agent, status.current_node) || label;
   if (status.workflow_status === "COMPLETED" && status.publish_status === "published") {
-    label = "Published";
+    label = "Blog published successfully";
   }
   setStatus(label, tone);
+}
+
+/** The same labels, straight from live events (no wait for the next status poll). */
+function showEventStatus(event) {
+  if (event.type === "node_started") {
+    const label = stepLabel(event.agent, event.node);
+    if (label) setStatus(label, "working");
+  } else if (event.type === "approval_required") {
+    setStatus(event.stage === "research" ? "Research approval required" : "Content approval required", "waiting");
+  } else if (event.type === "blog_published") {
+    setStatus("Blog published successfully", "done");
+  } else if (event.type === "error") {
+    setStatus("Stopped with an error", "failed");
+  }
+}
+
+/** The editor is read-only unless the current draft is waiting for review. */
+function syncEditorAccess() {
+  if (!editor.blogId) return;
+  editor.setAccess({ current: editor.blogId === state.lastBlogId, locked: !state.contentPending });
 }
 
 function refreshStatusSoon() {
@@ -168,11 +227,19 @@ function handleEvent(event, { replay = false } = {}) {
   const stick = replay || followNewEvents || (event.type === "message" && event.role === "user");
   timeline.add(event);
 
-  // Each draft's review summary also feeds the editor's "Outline and SEO" panel.
+  // Track which draft is current and whether it's waiting for review, so the editor
+  // only allows edits, rewrites and Publish on the newest draft while the graph is paused for it.
   if (event.type === "blog_ready") state.lastBlogId = event.blog_id;
   if (event.type === "approval_required" && event.stage === "content" && state.lastBlogId) {
-    state.draftDetails.set(state.lastBlogId, event.summary);
+    state.contentPending = true;
+    state.draftDetails.set(state.lastBlogId, event.summary);  // also feeds the editor's "Outline and SEO"
     if (editor.blogId === state.lastBlogId) editor.setDetails(event.summary);
+  }
+  if ((event.type === "approval_resolved" && event.stage === "content") || event.type === "blog_published") {
+    state.contentPending = false;
+  }
+  if (["blog_ready", "approval_required", "approval_resolved", "blog_published"].includes(event.type)) {
+    syncEditorAccess();
   }
   if (stick) {
     scrollToBottom();
@@ -180,6 +247,7 @@ function handleEvent(event, { replay = false } = {}) {
   }
 
   if (!replay) {
+    showEventStatus(event);
     if (event.type === "blog_ready") openDraft(event.blog_id);
     if (event.type === "blog_published" && editor.blogId === event.blog_id) openDraft(event.blog_id);
     if (event.type === "approval_required" && event.stage === "research") loadContext(); // research numbers
@@ -245,6 +313,7 @@ function resetThread() {
   state.lastEventId = 0;
   state.lastBlogId = null;
   state.draftDetails.clear();
+  state.contentPending = false;
   timeline.reset();
 }
 
@@ -307,6 +376,11 @@ async function send(text) {
   showComposerError("");
   setSending(true);
   try {
+    // Feedback typed here revises the draft as saved, so save the editor's edits first.
+    if (editor.hasUnsavedChanges && !(await editor.saveChanges())) {
+      showComposerError("Your edits in the editor couldn't be saved. Fix them there, then send again.");
+      return;
+    }
     const { session } = await api.sendMessage(message, state.sessionId);
     if (session.id !== state.sessionId) {
       state.sessionId = session.id;
@@ -367,7 +441,8 @@ async function retry() {
 async function openDraft(blogId) {
   try {
     const { blog } = await api.getBlog(blogId);
-    editor.open(blog, state.draftDetails.get(blogId) || null);
+    editor.open(blog, state.draftDetails.get(blogId) || null,
+                { current: blogId === state.lastBlogId, locked: !state.contentPending });
   } catch (err) {
     toast(err.message, "error");
   }

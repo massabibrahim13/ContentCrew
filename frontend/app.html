@@ -7,6 +7,7 @@
   <link rel="icon" href="/static/assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/css/base.css">
   <link rel="stylesheet" href="/static/css/app.css">
+  <script src="/static/js/theme.js"></script>
 </head>
 <body class="app">
   <header class="topbar">
@@ -20,6 +21,7 @@
       <span id="session-status-text">No active chat</span>
     </p>
     <div class="topbar-actions">
+      <button type="button" class="icon-btn theme-toggle" data-theme-toggle aria-label="Dark mode" aria-pressed="false" title="Switch to dark mode"><svg class="theme-icon-moon" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.4 12.4A6.8 6.8 0 0 1 7.6 3.6a6.8 6.8 0 1 0 8.8 8.8z"/></svg><svg class="theme-icon-sun" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.3"/><path d="M10 2.3v1.8M10 15.9v1.8M2.3 10h1.8M15.9 10h1.8M4.6 4.6l1.3 1.3M14.1 14.1l1.3 1.3M4.6 15.4l1.3-1.3M14.1 5.9l1.3-1.3"/></svg></button>
       <button type="button" class="btn btn-quiet btn-sm context-toggle" id="context-toggle" aria-controls="context-panel" aria-expanded="false">Context</button>
       <button type="button" class="btn btn-secondary btn-sm" id="new-chat">New chat</button>
     </div>
@@ -67,6 +69,22 @@
       <div class="editor-head">
         <h2 class="panel-title">Blog</h2>
         <span class="editor-status" id="editor-status" data-state="draft">Draft</span>
+        <div class="editor-download" id="editor-download">
+          <button type="button" class="btn btn-quiet btn-sm" id="editor-download-toggle" aria-expanded="false" aria-controls="editor-download-menu">
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 8.5l4 4 4-4M4 16h12"/></svg>
+            Download
+          </button>
+          <div class="download-menu" id="editor-download-menu" hidden>
+            <button type="button" class="download-option" data-format="html">
+              <span class="download-option-label">Web page <span class="download-ext">.html</span></span>
+              <span class="download-option-hint">For your website, or to open in Word</span>
+            </button>
+            <button type="button" class="download-option" data-format="md">
+              <span class="download-option-label">Markdown <span class="download-ext">.md</span></span>
+              <span class="download-option-hint">Plain text with formatting marks</span>
+            </button>
+          </div>
+        </div>
         <button type="button" class="icon-btn" id="editor-close" aria-label="Close the blog editor">
           <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg>
         </button>
@@ -86,6 +104,10 @@
         <textarea id="editor-source" class="editor-source" spellcheck="true" hidden></textarea>
       </div>
       <p class="editor-error" id="editor-error" role="alert" hidden></p>
+      <div class="editor-note" id="editor-note" role="status" hidden>
+        <p id="editor-note-text"></p>
+        <button type="button" class="btn btn-secondary btn-sm" id="editor-note-action" hidden>Open the latest draft</button>
+      </div>
       <form class="editor-regen" id="editor-regen" novalidate hidden>
         <label class="field-label" for="editor-regen-text">What should change? <span class="field-optional">Optional</span></label>
         <textarea id="editor-regen-text" class="textarea" rows="3" maxlength="1000" placeholder="For example: make the introduction more concise"></textarea>

@@ -5,6 +5,7 @@ POST /api/chat                        send a message; starts a workflow, or (whi
                                       waits for review) asks the Generation Agent for changes
 GET  /api/sessions/<id>               session state + every event so far (for page reloads)
 GET  /api/sessions/<id>/events        Server-Sent Events stream of new events
+GET  /api/sessions/<id>/trace         every step as flat rows (agent, node, tool, status, result, time)
 POST /api/sessions/<id>/retry         run the failed step again
 
 Why Server-Sent Events? The browser only needs to *receive* updates, SSE works
@@ -84,6 +85,23 @@ def get_session(session_id: str):
     session = deps.session_or_404(session_id)
     events = deps.event_repo().list_after(session_id, 0, limit=2000)
     return jsonify({"session": session, "events": events})
+
+
+TRACE_FIELDS = ("id", "created_at", "workflow_id", "type", "agent", "node", "tool", "status", "message",
+                "result", "stage", "decision", "role", "content", "blog_id", "retryable")
+
+
+@bp.get("/sessions/<session_id>/trace")
+def trace_session(session_id: str):
+    """
+    The chat's workflow as flat rows: when, which workflow run, agent, node, tool, status
+    and result. Built from the same events the timeline draws. Model reasoning is never
+    stored, so it can't appear here.
+    """
+    deps.session_or_404(session_id)
+    rows = [{key: event[key] for key in TRACE_FIELDS if event.get(key) not in (None, "")}
+            for event in deps.event_repo().list_after(session_id, 0, limit=5000)]
+    return jsonify({"session_id": session_id, "trace": rows})
 
 
 @bp.post("/sessions/<session_id>/retry")

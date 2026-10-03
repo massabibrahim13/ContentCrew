@@ -49,6 +49,8 @@ log = logging.getLogger(__name__)
 RESUME_STATUS = {
     ("research", "approve"): WorkflowStatus.GENERATING,
     ("research", "modify"): WorkflowStatus.RESEARCHING,
+    ("research", "reject"): WorkflowStatus.PLANNING,        # the Supervisor closes the request
+
     ("content", "approve"): WorkflowStatus.PUBLISHING,
     ("content", "regenerate"): WorkflowStatus.GENERATING,
 }
@@ -138,7 +140,7 @@ class WorkflowRunner:
             self.sessions.update(
                 session_id, status=WorkflowStatus.REQUESTED.value, current_agent=None, current_node="intake",
                 approval_required=None, research_approved=False, content_approved=False,
-                blog_status="none", publish_status="none", last_error=None,
+                blog_status="none", publish_status="none", last_error=None, current_blog_id=None,
                 graph_thread_id=f"{session_id}-{uuid.uuid4().hex[:8]}",
             )
         except Exception:
@@ -154,6 +156,12 @@ class WorkflowRunner:
             raise NoPendingApproval(stage)
         self._claim(session_id)
         try:
+            # The session row and the graph must agree on what's being approved. Otherwise
+            # "approve" meant for one checkpoint could be delivered to another.
+            pending = self._pending_stage(session)
+            if pending != stage:
+                self._resync(session_id, pending)
+                raise NoPendingApproval(stage)
             self.sessions.update(session_id, approval_required=None,
                                  status=RESUME_STATUS[(stage, decision)].value)
         except Exception:
@@ -169,7 +177,7 @@ class WorkflowRunner:
         snapshot = self._snapshot(session)
         self._claim(session_id)
         try:
-            emitter = WorkflowEmitter(self.db, session_id)
+            emitter = self._emitter(session)
             if snapshot is not None and snapshot.next:
                 emitter.workflow(WorkflowStatus.REQUESTED.value, f"Retrying from {snapshot.next[0]}")
                 values = snapshot.values
@@ -231,7 +239,7 @@ class WorkflowRunner:
             threading.Thread(target=run, name=f"workflow-{session_id[:8]}", daemon=True).start()
 
     def _run_new_request(self, session_id: str, message: str) -> None:
-        emitter = WorkflowEmitter(self.db, session_id)
+        emitter = self._emitter(self._session(session_id))
         emitter.workflow(WorkflowStatus.REQUESTED.value, "Request received")
 
         context = self.company.get_context()
@@ -262,7 +270,7 @@ class WorkflowRunner:
     def _invoke(self, session_id: str, payload: Any) -> None:
         """Run the graph until it finishes, pauses for approval, or fails."""
         session = self._session(session_id)
-        emitter = WorkflowEmitter(self.db, session_id)
+        emitter = self._emitter(session)
         context = WorkflowContext(session_id=session_id, settings=self.settings, db=self.db,
                                   emit=emitter, llm_factory=self.llm_factory)
         config = self._config(session)
@@ -293,10 +301,10 @@ class WorkflowRunner:
         if snapshot.next:
             log.warning("Session %s stopped with pending nodes %s and no interrupt", session_id, snapshot.next)
         values = snapshot.values
-        self.sessions.update(session_id, status=WorkflowStatus.COMPLETED.value,
-                             current_agent=None, current_node=None)
+        final = WorkflowStatus.CANCELLED if values.get("cancelled") else WorkflowStatus.COMPLETED
+        self.sessions.update(session_id, status=final.value, current_agent=None, current_node=None)
         if values.get("publish_status") == "published":
-            emitter.workflow(WorkflowStatus.COMPLETED.value, "Workflow complete")
+            emitter.workflow(WorkflowStatus.COMPLETED.value, "Blog published successfully")
 
     def _fail(self, session_id: str, emitter: WorkflowEmitter, message: str, retryable: bool) -> None:
         try:
@@ -314,6 +322,34 @@ class WorkflowRunner:
         if session is None:
             raise KeyError(session_id)
         return session
+
+    def _emitter(self, session: dict) -> WorkflowEmitter:
+        """Every event of a run carries its workflow id (the LangGraph thread), so a run can be traced."""
+        return WorkflowEmitter(self.db, session["id"], session.get("graph_thread_id"))
+
+    def _pending_stage(self, session: dict) -> Optional[str]:
+        """Which approval the graph itself is paused at (None if it isn't paused at one)."""
+        snapshot = self._snapshot(session)
+        if snapshot is None:
+            return None
+        if snapshot.interrupts:
+            return (snapshot.interrupts[0].value or {}).get("stage")
+        # About to enter an approval node (e.g. after a manual state update): same thing.
+        return {"request_research_approval": "research",
+                "request_content_approval": "content"}.get((snapshot.next or (None,))[0])
+
+    def _resync(self, session_id: str, pending: Optional[str]) -> None:
+        """The session row disagreed with the graph: make the row match the graph."""
+        session = self._session(session_id)
+        if pending in WAITING_FOR:
+            log.warning("Session %s said %s approval, graph waits for %s: resynced",
+                        session_id, session["approval_required"], pending)
+            self.sessions.update(session_id, status=WAITING_FOR[pending].value, approval_required=pending)
+        else:
+            log.warning("Session %s waited for approval but the graph has no pause", session_id)
+            self._fail(session_id, self._emitter(session),
+                       "This approval can't continue because the saved workflow state is missing. "
+                       "Send your request again to start over.", retryable=False)
 
     def _config(self, session: dict) -> dict:
         return {"configurable": {"thread_id": session["graph_thread_id"] or session["id"]},

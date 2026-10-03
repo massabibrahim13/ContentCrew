@@ -45,8 +45,16 @@ def get_chat_model(settings: Settings, temperature: float = 0.3, timeout: float 
             ) from exc
         # The free tier allows a limited number of tokens per minute. Extra retries let the
         # SDK wait out a short rate limit (it honours the server's retry-after) instead of failing.
-        return ChatGroq(model=settings.llm_model, api_key=settings.groq_api_key,
-                        temperature=temperature, timeout=timeout, max_retries=6)
+        extra: dict = {}
+        model = settings.llm_model
+        if model.startswith("openai/gpt-oss"):
+            # Reasoning models spend tokens thinking before they answer; on the free tier's
+            # tokens-per-minute budget, "low" keeps a whole run moving. LLM_REASONING_EFFORT overrides.
+            extra["reasoning_effort"] = settings.llm_reasoning_effort or "low"
+        elif model.startswith("qwen/"):
+            extra["reasoning_format"] = "hidden"      # keep its thinking out of the answer text
+        return ChatGroq(model=model, api_key=settings.groq_api_key,
+                        temperature=temperature, timeout=timeout, max_retries=6, **extra)
 
     if not settings.openai_api_key:
         raise LLMConfigurationError("OPENAI_API_KEY is empty. Set it in .env (see .env.example).")
@@ -68,7 +76,8 @@ def describe_llm_error(exc: Exception) -> str:
     if name == "PermissionDeniedError":
         return "The API key doesn't have access to that model. Check LLM_MODEL in .env."
     if name == "NotFoundError":
-        return "The model in LLM_MODEL wasn't found. Check the model name in .env."
+        return ("The model in LLM_MODEL wasn't found; providers retire models from time to time. "
+                "Set LLM_MODEL in .env to a current model (for Groq: openai/gpt-oss-120b), then restart the app.")
     if name == "RateLimitError":
         return "The free tier's rate limit was reached. Wait a minute, then try again."
     if name == "BadRequestError":

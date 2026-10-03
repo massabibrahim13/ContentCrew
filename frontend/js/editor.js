@@ -3,7 +3,8 @@
  *
  * Closed until the Generation Agent reports a draft (a `blog_ready` event).
  * Shows the draft rendered, lets the user edit the Markdown, and exposes the
- * three actions from the design: Edit, Regenerate, Publish.
+ * three actions from the design: Edit, Regenerate, Publish. Download (in the
+ * header) saves the post as a web page or Markdown file for any website.
  *
  * - Publishing is a two-step click and goes through the content-approval
  *   endpoint, so the server decides whether the post can go out.
@@ -13,6 +14,7 @@
  *   as the approval card in the chat), folded away until the user wants them.
  */
 
+import { downloadBlog } from "./download.js";
 import { renderMarkdown } from "./markdown.js";
 import { renderSections } from "./summary.js";
 
@@ -30,6 +32,10 @@ export class BlogEditor {
     this.mode = "preview";
     this.confirmTimer = null;
     this.busy = false;
+    this.current = true;   // false = an older version, kept for reference: read-only
+    this.locked = false;   // true = the agents are working (rewriting or publishing): read-only for now
+
+    els.noteAction.addEventListener("click", () => this.handlers.onOpenLatest?.());
 
     els.close.addEventListener("click", () => this.close());
     els.edit.addEventListener("click", () => this.#toggleEdit());
@@ -48,6 +54,25 @@ export class BlogEditor {
       if (e.key === "Enter") e.preventDefault();      // a title is one line, even though it wraps
     });
     els.source.addEventListener("input", () => this.#markDirty());
+
+    // Download: always available, whatever the draft's state; it saves what's on screen.
+    els.downloadToggle.addEventListener("click", () => this.#showDownloads(els.downloadMenu.hidden));
+    els.downloadMenu.addEventListener("click", (e) => {
+      const option = e.target.closest("[data-format]");
+      if (option) this.#download(option.dataset.format);
+    });
+    els.download.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape" || els.downloadMenu.hidden) return;
+      e.stopPropagation();                          // close the menu, not the editor
+      this.#showDownloads(false);
+      els.downloadToggle.focus();
+    });
+    els.download.addEventListener("focusout", (e) => {
+      if (e.relatedTarget && !els.download.contains(e.relatedTarget)) this.#showDownloads(false);
+    });
+    document.addEventListener("click", (e) => {
+      if (!els.download.contains(e.target)) this.#showDownloads(false);
+    });
     // Refit the title whenever its width changes (panel opening, window resizing).
     if ("ResizeObserver" in window) new ResizeObserver(() => this.#fitTitle()).observe(els.title);
     else window.addEventListener("resize", () => this.#fitTitle());
@@ -61,14 +86,36 @@ export class BlogEditor {
     return this.blog?.id ?? null;
   }
 
-  open(blog, details = null) {
+  get hasUnsavedChanges() {
+    return Boolean(this.isOpen && this.dirty);
+  }
+
+  /** Save pending edits (e.g. before feedback is sent from the chat). Returns false if saving failed. */
+  saveChanges() {
+    return this.#save();
+  }
+
+  /**
+   * current: is this the chat's newest draft? Older versions are read-only.
+   * locked: are the agents busy with it? Then nothing can be changed until they finish.
+   */
+  setAccess({ current = this.current, locked = this.locked } = {}) {
+    this.current = current;
+    this.locked = locked;
+    if (this.blog) this.#renderStatus();
+  }
+
+  open(blog, details = null, access = {}) {
     const sameBlog = this.blog?.id === blog.id;
     this.blog = blog;
     this.dirty = false;
+    this.current = access.current ?? true;
+    this.locked = access.locked ?? false;
     this.els.title.value = blog.title;
     this.els.source.value = blog.content;
     this.#setMode("preview");
     this.#showRegenerate(false);
+    this.#showDownloads(false);
     if (!sameBlog || details) this.setDetails(details);
     this.#renderStatus();
     this.setError("");
@@ -82,6 +129,7 @@ export class BlogEditor {
     if (!this.isOpen) return;
     this.els.panel.hidden = true;
     this.#resetConfirm();
+    this.#showDownloads(false);
     this.handlers.onOpenChange?.(false);
   }
 
@@ -114,13 +162,34 @@ export class BlogEditor {
 
   #renderStatus() {
     const published = this.blog?.status === "published";
-    this.els.status.textContent = published ? "Published" : this.dirty ? "Unsaved changes" : "Draft";
-    this.els.status.dataset.state = published ? "published" : this.dirty ? "dirty" : "draft";
+    const old = !published && !this.current;
+    const locked = !published && this.current && this.locked;
+    const [label, tone] = published ? ["Published", "published"]
+      : old ? ["Older version", "old"]
+      : this.dirty ? ["Unsaved changes", "dirty"]
+      : locked ? ["Agents working", "locked"]
+      : ["Draft", "draft"];
+    this.els.status.textContent = label;
+    this.els.status.dataset.state = tone;
+
+    const readOnly = published || old || locked;
     for (const button of [this.els.edit, this.els.regenerate, this.els.publish]) {
-      button.disabled = published || this.busy;
+      button.disabled = readOnly || this.busy;
     }
     this.els.publish.textContent = published ? "Published" : "Publish";
-    if (published) this.#showRegenerate(false);
+    if (readOnly) {
+      this.#showRegenerate(false);
+      this.#resetConfirm();
+      if (this.mode === "edit" && !this.dirty) this.#setMode("preview");
+    }
+
+    // Say why the editor is read-only, so a disabled button never looks broken.
+    const note = old ? "This is an older version, kept for reference. Only the latest draft can be edited or published."
+      : locked ? "The agents are working on this draft. Editing unlocks when the next version is ready for review."
+      : "";
+    this.els.noteText.textContent = note;
+    this.els.note.hidden = !note;
+    this.els.noteAction.hidden = !old;
   }
 
   #setMode(mode) {
@@ -191,6 +260,21 @@ export class BlogEditor {
       regenText.focus();
     } else {
       regenText.value = "";
+    }
+  }
+
+  #showDownloads(show) {
+    this.els.downloadMenu.hidden = !show;
+    this.els.downloadToggle.setAttribute("aria-expanded", String(show));
+  }
+
+  /** The file holds what the editor shows, including edits that aren't saved yet. */
+  #download(format) {
+    this.#showDownloads(false);
+    try {
+      downloadBlog({ title: this.els.title.value, content: this.els.source.value }, format);
+    } catch {
+      this.setError("The file couldn't be created. Try again.");
     }
   }
 

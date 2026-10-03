@@ -1,7 +1,8 @@
 """
 Human-in-the-loop decisions.
 
-POST /api/approval/research   {session_id, decision: "approve" | "modify", feedback?}
+POST /api/approval/research   {session_id, decision: "approve" | "modify" | "reject", feedback?}
+                              reject = "Cancel request": the run ends, nothing is written.
 POST /api/approval/content    {session_id, decision: "approve" | "regenerate", feedback?}
                               approve = Publish. regenerate = ask the Generation Agent for changes;
                               feedback like "make the introduction more concise" lets it redo
@@ -24,7 +25,7 @@ from services.workflow_runner import NoPendingApproval, WorkflowBusyError, Workf
 bp = Blueprint("approval", __name__)
 
 DECISIONS = {
-    "research": ("approve", "modify"),
+    "research": ("approve", "modify", "reject"),     # reject = "Cancel request"
     "content": ("approve", "regenerate"),
 }
 NEEDS_FEEDBACK = {"modify"}

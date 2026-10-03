@@ -40,6 +40,7 @@ from pydantic import BaseModel, Field
 
 from agents.policy import UNTRUSTED_CONTENT_RULES, as_search_result, escape
 from config import Settings
+from llm.structured import ask_structured
 from tools import ToolResult, google_search, seo_analysis
 from tools.seo_analysis import count_term, plain_text, words_of
 from tools.text import STOPWORDS, heading_key, join_sections, split_sections, tokens
@@ -358,7 +359,7 @@ def rule_revision_scope(feedback: str, parts: list[dict]) -> tuple[str, list[int
 
 def _strip_wrapping(markdown: str) -> str:
     """Remove what models sometimes add around a post: code fences, a preface, the title, our tags."""
-    text = (markdown or "").strip()
+    text = re.sub(r"<think>.*?</think>", "", markdown or "", flags=re.DOTALL).strip()   # reasoning some models inline
     fenced = re.fullmatch(r"```(?:markdown|md)?\s*\n(.*?)\n```", text, flags=re.DOTALL)
     if fenced:
         text = fenced.group(1).strip()
@@ -401,7 +402,7 @@ class GenerationAgent:
     # -- model calls ------------------------------------------------------------
 
     def _ask(self, schema, prompt: str):
-        return self.llm.with_structured_output(schema).invoke([SystemMessage(SYSTEM_PROMPT), HumanMessage(prompt)])
+        return ask_structured(self.llm, schema, [SystemMessage(SYSTEM_PROMPT), HumanMessage(prompt)])
 
     def _write(self, prompt: str) -> str:
         response = self.llm.invoke([SystemMessage(SYSTEM_PROMPT), HumanMessage(prompt)])

@@ -19,6 +19,7 @@ Each result: {"title", "url", "domain", "snippet", "query"}.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from typing import Optional
 from urllib.parse import urlparse
@@ -52,12 +53,57 @@ def _result(title: str, url: str, snippet: str, query: str) -> Optional[dict]:
     }
 
 
-def _http_problem(response) -> Optional[ToolResult]:
+# Keys the provider rejected since the app started (stored as hashes, never the key itself).
+# One rejection is enough: the rest of the run skips search instead of failing query after
+# query. Restarting the app after fixing .env clears this.
+_rejected_keys: set[str] = set()
+
+KEY_PREFIXES = {"tavily": "tvly-"}
+
+
+def _key_id(provider: str, api_key: str) -> str:
+    return hashlib.sha256(f"{provider}:{api_key}".encode()).hexdigest()
+
+
+def key_rejected(settings: Settings) -> bool:
+    return _key_id(settings.search_provider, settings.search_api_key) in _rejected_keys
+
+
+def forget_rejected_keys() -> None:
+    _rejected_keys.clear()
+
+
+def _rejected_message(provider: str, api_key: str) -> str:
+    prefix = KEY_PREFIXES.get(provider)
+    hint = (f" {provider.title()} keys start with {prefix}; this one doesn't." if prefix and not api_key.startswith(prefix)
+            else "")
+    return (f"The search API key was rejected.{hint} Check SEARCH_API_KEY (and SEARCH_PROVIDER) in .env, "
+            "then restart the app.")
+
+
+def _provider_error(response) -> str:
+    """The provider's own explanation, for the server log (it never contains the key)."""
+    try:
+        body = response.json()
+    except ValueError:
+        return ""
+    detail = body.get("detail") if isinstance(body, dict) else None
+    if isinstance(detail, dict):
+        detail = detail.get("error") or detail.get("message")
+    return normalize_space(str(detail or body.get("message") or body.get("error") or ""))[:200]
+
+
+def _http_problem(response, provider: str = "", api_key: str = "") -> Optional[ToolResult]:
     if response.status_code in (401, 403):
-        return ToolResult.error("The search API key was rejected. Check SEARCH_API_KEY in .env.")
+        log.warning("Search provider %s rejected the key (HTTP %s): %s",
+                    provider, response.status_code, _provider_error(response) or "no details")
+        _rejected_keys.add(_key_id(provider, api_key))
+        return ToolResult.error(_rejected_message(provider, api_key))
     if response.status_code in (429, 432, 433):
         return ToolResult.error("The free search allowance is used up for now (rate limit or monthly credits).")
     if not response.ok:
+        log.warning("Search provider %s returned HTTP %s: %s", provider, response.status_code,
+                    _provider_error(response) or "no details")
         return ToolResult.error(f"Search failed (HTTP {response.status_code}).")
     return None
 
@@ -79,7 +125,7 @@ def _tavily(query: str, api_key: str, max_results: int, include_domains: list[st
                               {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
     if failure:
         return failure
-    problem = _http_problem(response)
+    problem = _http_problem(response, "tavily", api_key)
     if problem:
         return problem
     try:
@@ -99,7 +145,7 @@ def _serper(query: str, api_key: str, max_results: int, include_domains: list[st
                               {"X-API-KEY": api_key, "Content-Type": "application/json"})
     if failure:
         return failure
-    problem = _http_problem(response)
+    problem = _http_problem(response, "serper", api_key)
     if problem:
         return problem
     try:
@@ -122,7 +168,8 @@ _PROVIDERS = {"tavily": _tavily, "serper": _serper}
 
 
 def is_configured(settings: Settings) -> bool:
-    return settings.search_provider in _PROVIDERS and bool(settings.search_api_key)
+    """Search can be used: a supported provider, a key, and the key hasn't been rejected."""
+    return settings.search_provider in _PROVIDERS and bool(settings.search_api_key) and not key_rejected(settings)
 
 
 def search(query: str, settings: Settings, max_results: int = 8,
@@ -142,6 +189,9 @@ def search(query: str, settings: Settings, max_results: int = 8,
             f"SEARCH_PROVIDER '{settings.search_provider}' isn't supported. "
             f"Supported: {', '.join(sorted(_PROVIDERS))}."
         )
+
+    if key_rejected(settings):
+        return ToolResult.not_configured(_rejected_message(settings.search_provider, settings.search_api_key))
 
     domains = [d for d in (include_domains or []) if d][:10]
     result = provider(query, settings.search_api_key, max(1, min(max_results, 10)), domains)

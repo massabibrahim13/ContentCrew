@@ -2,14 +2,16 @@
 Blog drafts and publishing.
 
 GET   /api/blog/<id>     a draft or published post
-PATCH /api/blog/<id>     save edits to a draft         {title?, content?}
-POST  /api/blog          publish an approved draft     {session_id, blog_id}
+PATCH /api/blog/<id>     save edits to the current draft while it waits for review   {title?, content?}
+POST  /blog              publish an approved draft     {session_id, blog_id}   (alias: /api/blog)
 GET   /api/blogs         list posts (?status=draft|published)
 GET   /api/posts/<slug>  a published post (what the public /blog/<slug> page shows)
 
-POST /api/blog is the "publish" action the Publish tool calls. It refuses unless
-the server has recorded the human's content approval for that chat, so a
-crafted request from the browser (or a prompt-injected agent) can't publish.
+POST /blog is the "publish" action. The Publish Blog tool calls it over HTTP.
+It refuses unless the workflow is at its publish step, the server has recorded
+the human's approval, and the draft is the current one with content (see
+services/publishing.py), so a crafted request from the browser or a
+prompt-injected agent can't publish.
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ from flask import Blueprint, jsonify, request
 from api import deps
 from api.errors import ApiError
 from api.validation import Validator, json_body
+from graph.state import WorkflowStatus
 from services.publishing import PublishRefused, publish_approved_blog
 
 log = logging.getLogger(__name__)
@@ -48,6 +51,15 @@ def update_blog(blog_id: str):
     blog = _blog_or_404(blog_id)
     if blog["status"] != "draft":
         raise ApiError(409, "already_published", "Published posts can't be edited here.")
+    # Edits are only accepted while the human is reviewing the current draft. After
+    # "Publish" or during a rewrite, a change would slip in without being approved.
+    session = deps.session_repo().get(blog["session_id"]) if blog["session_id"] else None
+    if session is not None:
+        if session["current_blog_id"] and blog_id != session["current_blog_id"]:
+            raise ApiError(409, "not_current_draft",
+                           "This is an older version of the draft. Open the latest draft to edit it.")
+        if session["status"] != WorkflowStatus.WAITING_FOR_CONTENT_APPROVAL.value:
+            raise ApiError(409, "draft_locked", "The draft can only be edited while it's waiting for your review.")
 
     data = json_body()
     v = Validator()

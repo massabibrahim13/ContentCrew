@@ -169,6 +169,26 @@ def test_search_api_failure_falls_back_to_competitor_websites(make_app, monkeypa
     assert status(client, sid)["workflow_status"] == "WAITING_FOR_RESEARCH_APPROVAL"
 
 
+def test_a_rejected_search_key_stops_searching_after_one_try(make_app, monkeypatch):
+    from tests.test_tools import FakeResponse
+    sent = []
+    monkeypatch.setattr("tools.google_search.requests.post",
+                        lambda *a, **k: sent.append(1) or FakeResponse(401, {"detail": {"error": "Invalid API key"}}))
+    client = make_app(search=True).test_client()
+    client.put("/api/context", json=SAMPLE)
+    sid = client.post("/api/chat", json={"message": "Write me a blog about Agentic AI"}).get_json()["session"]["id"]
+
+    assert len(sent) == 1                                          # one rejection, no more API calls
+    searches = [t for t in events(client, sid, "tool_completed") if t["tool"] == "google_search"]
+    assert searches[0]["status"] == "failed" and "rejected" in searches[0]["result"]
+    assert all(t["status"] == "skipped" for t in searches[1:])
+    read = [t for t in events(client, sid, "tool_completed") if t["tool"] == "web_scraper" and t["status"] == "completed"]
+    assert len(read) == 3                                          # competitor websites instead
+    summary = events(client, sid, "approval_required")[-1]["summary"]
+    sources = next(s for s in summary["sections"] if s["title"] == "Sources analyzed")
+    assert "Web search wasn't available" in sources["note"]
+
+
 def test_without_search_or_competitors_the_research_says_so(make_app):
     client = make_app().test_client()
     client.put("/api/context", json={**SAMPLE, "competitors": []})

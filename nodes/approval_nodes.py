@@ -45,22 +45,31 @@ def _refresh_plan(state: ContentCrewState, ctx: WorkflowContext, active: str) ->
 # ---------------------------------------------------------------------------
 
 def request_research_approval(state: ContentCrewState, runtime: Runtime[WorkflowContext]) -> dict:
+    """
+    Pause with the research card. The human chooses:
+        approve  -> the Supervisor hands the approved research to the Generation Agent
+        modify   ("Request changes", with feedback) -> the Analysis Agent researches again
+        reject   ("Cancel request") -> the Supervisor ends the run; nothing is written
+    """
     value = interrupt({"stage": "research", "summary": state.get("research_summary") or {}})
 
     ctx = runtime.context
-    decision, feedback = _read_decision(value, {"approve", "modify"})
+    decision, feedback = _read_decision(value, {"approve", "modify", "reject"})
     approved = decision == "approve"
     ctx.emit.publish(approval_resolved_event("research", decision, feedback))
     ctx.emit.update_session(research_approved=approved, approval_required=None)
 
-    update = {"research_approved": approved, "research_feedback": None if approved else feedback,
+    update = {"research_approved": approved, "research_feedback": feedback if decision == "modify" else None,
+              "cancelled": decision == "reject",
               "current_agent": "supervisor", "current_node": "request_research_approval"}
-    if not approved:
+    if decision == "modify":
         update["plan"] = _refresh_plan(state, ctx, "research")
     return update
 
 
-def after_research_approval(state: ContentCrewState) -> Literal["approved", "modify"]:
+def after_research_approval(state: ContentCrewState) -> Literal["approved", "modify", "rejected"]:
+    if state.get("cancelled"):
+        return "rejected"
     return "approved" if state.get("research_approved") else "modify"
 
 

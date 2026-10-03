@@ -61,11 +61,64 @@
   --font-read: "Newsreader", Georgia, "Times New Roman", serif;
   --font-code: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 
+  --on-brand: #ffffff;              /* text on a brand-green fill */
+  --on-agent: #ffffff;              /* letters on the agents' coloured monograms */
+  --prose-ink: #2a302c;             /* the post's body text */
+  --placeholder: #8b928b;
+  --attention-line-soft: rgba(214, 160, 60, 0.45);
+  --brand-wash: rgba(31, 81, 53, 0.14);
+  --hover-wash: rgba(255, 255, 255, 0.6);
+  --scrim: rgba(27, 32, 29, 0.3);
+
   --radius-s: 6px;
   --radius-m: 10px;
   --shadow-pop: 0 1px 2px rgba(27, 32, 29, 0.06), 0 10px 30px rgba(27, 32, 29, 0.1);
+  --shadow-sheet: 0 1px 0 rgba(27, 32, 29, 0.04), 0 18px 40px -18px rgba(27, 32, 29, 0.22);
 
   --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--brand);
+}
+
+/* Dark mode: the same roles, re-coloured. js/theme.js sets data-theme from the
+   visitor's choice (or the system setting) before the page draws. On dark
+   backgrounds the brand green turns light, so filled buttons get dark text. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: #111512;
+  --surface: #191e1b;
+  --surface-sunk: #222823;
+  --ink: #e4e9e4;
+  --ink-2: #b6beb7;
+  --ink-3: #8f988f;
+  --line: #2e352f;
+  --line-strong: #434b44;
+
+  --brand: #74c095;
+  --brand-hover: #8dcea9;
+  --brand-tint: #1d3427;
+
+  --attention: #e2b15e;
+  --attention-line: #a87a2c;
+  --attention-tint: #2d2516;
+
+  --danger: #f08f7c;
+  --danger-tint: #3a211c;
+
+  --agent-supervisor: #74c095;
+  --agent-analysis: #7db4d4;
+  --agent-generation: #d99b78;
+
+  --on-brand: #0e1a13;
+  --on-agent: #111613;
+  --prose-ink: #d5dbd5;
+  --placeholder: #737c74;
+  --attention-line-soft: rgba(168, 122, 44, 0.55);
+  --brand-wash: rgba(116, 192, 149, 0.16);
+  --hover-wash: rgba(255, 255, 255, 0.06);
+  --scrim: rgba(0, 0, 0, 0.55);
+
+  --shadow-pop: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-sheet: 0 1px 0 rgba(0, 0, 0, 0.3), 0 18px 40px -18px rgba(0, 0, 0, 0.7);
 }
 
 *,
@@ -192,12 +245,12 @@ button, input, textarea, select {
 
 .btn-primary {
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--brand-hover);
-  color: #fff;
+  color: var(--on-brand);
 }
 
 .btn-secondary {
@@ -296,7 +349,7 @@ button, input, textarea, select {
 
 .input::placeholder,
 .textarea::placeholder {
-  color: #8b928b;
+  color: var(--placeholder);
 }
 
 .input:hover,
@@ -369,7 +422,7 @@ button, input, textarea, select {
   padding: 12px 14px;
   border-radius: var(--radius-m);
   background: var(--ink);
-  color: #fff;
+  color: var(--surface);
   font-size: 14px;
   box-shadow: var(--shadow-pop);
 }
@@ -386,4 +439,82 @@ button, input, textarea, select {
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
   }
+}
+
+/* --- Light / dark switch (all pages) --------------------------------------- */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-toggle .theme-icon-sun,
+:root[data-theme="dark"] .theme-toggle .theme-icon-moon {
+  display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .theme-icon-sun {
+  display: block;
+}
+
+/* --- Post text (the editor's preview and the public post page) ------------- */
+
+.prose {
+  max-width: 64ch;
+  margin-top: 14px;
+  font-family: var(--font-read);
+  font-size: 17px;
+  line-height: 1.68;
+  color: var(--prose-ink);
+}
+
+.prose h2 {
+  margin-top: 1.5em;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.prose h3 {
+  margin-top: 1.3em;
+  font-size: 18.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.prose p,
+.prose ul,
+.prose ol,
+.prose blockquote {
+  margin-top: 0.75em;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.3em;
+}
+
+.prose ul {
+  list-style: disc;
+}
+
+.prose ol {
+  list-style: decimal;
+}
+
+.prose blockquote {
+  padding-left: 14px;
+  border-left: 2px solid var(--line-strong);
+  font-style: italic;
+  color: var(--ink-2);
+}
+
+.prose code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--surface-sunk);
+  font-family: var(--font-code);
+  font-size: 0.85em;
 }

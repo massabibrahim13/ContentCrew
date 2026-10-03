@@ -54,7 +54,7 @@ HTTP_MESSAGES = {
 
 
 def _is_api_request() -> bool:
-    return request.path.startswith("/api/")
+    return request.path.startswith("/api/") or (request.path == "/blog" and request.method == "POST")
 
 
 def register_error_handlers(app: Flask) -> None:

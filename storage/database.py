@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     publish_status    TEXT NOT NULL DEFAULT 'none',
     last_error        TEXT,
     graph_thread_id   TEXT,                       -- LangGraph thread for the current run
+    current_blog_id   TEXT,                       -- the newest draft: the only one that can be published
     created_at        TEXT NOT NULL,
     updated_at        TEXT NOT NULL
 );
@@ -119,6 +120,8 @@ class Database:
         added = {
             # Phase 3: which LangGraph thread (checkpoint history) belongs to the chat's current run
             ("sessions", "graph_thread_id"): "TEXT",
+            # Phase 7: which draft is current (older versions can't be edited or published)
+            ("sessions", "current_blog_id"): "TEXT",
             # Phase 6: the latest research summary in the left panel
             ("research_runs", "topic"): "TEXT",
             ("research_runs", "summary"): "TEXT",

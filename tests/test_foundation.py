@@ -41,22 +41,22 @@ def test_llm_factory_explains_missing_config(tmp_path):
     with pytest.raises(LLMConfigurationError, match="LLM_MODEL"):
         get_chat_model(load_settings(llm_provider="groq", llm_model="", groq_api_key=""))
     with pytest.raises(LLMConfigurationError, match="GROQ_API_KEY"):
-        get_chat_model(load_settings(llm_provider="groq", llm_model="llama-3.3-70b-versatile", groq_api_key=""))
+        get_chat_model(load_settings(llm_provider="groq", llm_model="openai/gpt-oss-120b", groq_api_key=""))
     with pytest.raises(LLMConfigurationError, match="isn't supported"):
         get_chat_model(load_settings(llm_provider="nope", llm_model="x"))
 
 
 def test_groq_is_the_free_default_and_builds_without_network():
     pytest.importorskip("langchain_groq")
-    settings = load_settings(llm_provider="groq", llm_model="llama-3.3-70b-versatile", groq_api_key="gsk_test")
+    settings = load_settings(llm_provider="groq", llm_model="openai/gpt-oss-120b", groq_api_key="gsk_test")
     model = get_chat_model(settings)
-    assert type(model).__name__ == "ChatGroq" and model.model_name == "llama-3.3-70b-versatile"
+    assert type(model).__name__ == "ChatGroq" and model.model_name == "openai/gpt-oss-120b"
     assert model.max_retries >= 4          # rides out short free-tier rate limits
     assert settings.integrations["llm"] is True
 
 
 def test_settings_never_expose_keys():
-    settings = load_settings(llm_provider="groq", groq_api_key="gsk-secret", llm_model="llama-3.3-70b-versatile")
+    settings = load_settings(llm_provider="groq", groq_api_key="gsk-secret", llm_model="openai/gpt-oss-120b")
     assert "gsk-secret" not in repr(settings)
     assert settings.integrations["llm"] is True
 

@@ -53,6 +53,7 @@ class Settings:
     # Language model. Default: Groq's free tier (no credit card).
     llm_provider: str = "groq"
     llm_model: str = ""
+    llm_reasoning_effort: str = ""      # gpt-oss models: low | medium | high (default low)
     groq_api_key: str = field(default="", repr=False)
     openai_api_key: str = field(default="", repr=False)   # optional, paid
 
@@ -60,6 +61,10 @@ class Settings:
     search_provider: str = ""
     search_api_key: str = field(default="", repr=False)
     seo_api_key: str = field(default="", repr=False)       # no free provider exists; unused
+
+    # Where the Publish Blog tool sends POST /blog. Empty = this app's own blog
+    # (http://127.0.0.1:<port>/blog). Point it at another blog service to publish there.
+    blog_api_url: str = ""
 
     # The web scraper refuses private/internal addresses (SSRF protection).
     # Only the test suite turns this on, to read pages from a local test server.
@@ -94,11 +99,13 @@ def load_settings(**overrides) -> Settings:
         log_dir=Path(_env("LOG_DIR") or BASE_DIR / "logs"),
         llm_provider=_env("LLM_PROVIDER", "groq").lower(),
         llm_model=_env("LLM_MODEL"),
+        llm_reasoning_effort=_env("LLM_REASONING_EFFORT").lower(),
         groq_api_key=_env("GROQ_API_KEY"),
         openai_api_key=_env("OPENAI_API_KEY"),
         search_provider=_env("SEARCH_PROVIDER").lower(),
         search_api_key=_env("SEARCH_API_KEY"),
         seo_api_key=_env("SEO_API_KEY"),
+        blog_api_url=_env("BLOG_API_URL"),
     )
     values.update(overrides)
     return Settings(**values)
