@@ -40,12 +40,31 @@ _LEAD_IN = re.compile(
     r"^\s*(?:please\s+|can you\s+|could you\s+)*"
     r"(?:write|create|draft|make|produce|generate)?\s*(?:me|us)?\s*(?:a|an)?\s*"
     r"(?:short\s+|long\s+|detailed\s+|new\s+)?"
-    r"(?:blog\s*post|blog|post|article|piece)\s+(?:about|on|for|covering|explaining)\s+",
+    r"(?:blog\s*post|blog|post|article|piece)\s+(?P<prep>about|on|for|covering|explaining)\s+",
     re.IGNORECASE,
 )
 _VERB_ONLY = re.compile(r"^\s*(?:please\s+)?(?:write|create|draft|make|produce)\s+(?:me\s+|us\s+)?(?:a\s+|an\s+)?", re.IGNORECASE)
 _TRAILING = re.compile(r"\s+for\s+(?:our|my|the)\s+(?:target\s+)?(?:audience|readers|customers)\s*$", re.IGNORECASE)
 _WRITING_WORDS = re.compile(r"\b(write|draft|blog|post|article|content|piece)\b", re.IGNORECASE)
+# "a blog for retail brand managers on how to plan ...": the audience, then the topic.
+# (The writer still gets the whole request, so the audience isn't lost.)
+_AUDIENCE_THEN_TOPIC = re.compile(r"^(?P<audience>[^,.;:?!]{2,60}?)\s+(?:on|about)\s+(?P<topic>\S.*)$", re.IGNORECASE)
+_DANGLING = re.compile(r"[\s,;:\-]+(?:and|or|the|a|an|to|of|for|with|in|on|from|by|at)?$", re.IGNORECASE)
+TOPIC_LIMIT = 120
+
+
+def _shorten(topic: str, limit: int = TOPIC_LIMIT) -> str:
+    """Long topics end at a natural break (a comma or a word), never mid-word."""
+    if len(topic) <= limit:
+        return topic
+    cut = topic[:limit + 1]
+    clause = max(cut.rfind(mark) for mark in (", ", "; ", " - ", ": "))
+    cut = cut[:clause] if clause >= 40 else cut[:cut.rfind(" ")] if " " in cut else cut[:limit]
+    while True:                       # drop a trailing "and", "to", comma ...
+        shorter = _DANGLING.sub("", cut)
+        if shorter == cut:
+            return cut
+        cut = shorter
 
 CANCELLED_REPLY = "Request cancelled. Nothing was written or published. Send a new request whenever you're ready."
 
@@ -70,13 +89,18 @@ class Supervisor:
         text = message.strip()
         if not _WRITING_WORDS.search(text):
             return "unsupported", ""
-        topic = _LEAD_IN.sub("", text, count=1)
-        if topic == text:
+        lead_in = _LEAD_IN.match(text)
+        if lead_in:
+            topic = text[lead_in.end():]
+            split = _AUDIENCE_THEN_TOPIC.match(topic) if lead_in.group("prep").lower() == "for" else None
+            if split:
+                topic = split.group("topic")
+        else:
             topic = _VERB_ONLY.sub("", text, count=1)
         topic = _TRAILING.sub("", topic).strip(" .!?\"'")
         if not topic or len(topic) < 2:
             return "unsupported", ""
-        return "blog", topic[:120]
+        return "blog", _shorten(topic)
 
     @staticmethod
     def understand_follow_up(message: str) -> Literal["new_request", "feedback"]:

@@ -24,6 +24,20 @@ def test_supervisor_reads_requests():
     assert Supervisor.understand_request("Write me a blog about Agentic AI for our target audience") == ("blog", "Agentic AI")
     assert Supervisor.understand_request("Can you write an article on PIM for retail?") == ("blog", "PIM for retail")
     assert Supervisor.understand_request("hello")[0] == "unsupported"
+
+
+def test_supervisor_separates_the_audience_and_never_cuts_a_topic_mid_word():
+    from supervisor.supervisor_agent import Supervisor
+    long = ("Write a blog for retail brand managers on how to plan a successful in-store brand activation "
+            "in Pakistan, from the idea and POSM design to fabrication, setup and measuring results.")
+    kind, topic = Supervisor.understand_request(long)
+    assert kind == "blog" and topic.startswith("how to plan a successful in-store brand activation")
+    assert len(topic) <= 120 and topic == "how to plan a successful in-store brand activation in Pakistan, " \
+                                          "from the idea and POSM design to fabrication"
+    assert Supervisor.understand_request("Write a post for small businesses about saving tax") == ("blog", "saving tax")
+    assert Supervisor.understand_request("Write a blog for retail teams")[1] == "retail teams"
+    words = Supervisor.understand_request("Write a blog about " + "very " * 40 + "long topics")[1]
+    assert len(words) <= 120 and not words.endswith(("ver", " "))
     assert Supervisor.decide_next({"request_type": "blog"}) == "analysis"
     assert Supervisor.decide_next({"request_type": "blog", "research_approved": True}) == "generation"
     assert Supervisor.decide_next({"request_type": "blog", "research_approved": True, "content_approved": True}) == "publish"

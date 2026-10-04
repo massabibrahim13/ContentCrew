@@ -511,6 +511,12 @@ button, input, textarea, select {
   color: var(--ink-2);
 }
 
+.prose hr {
+  margin: 1.6em 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
 .prose code {
   padding: 1px 4px;
   border-radius: 4px;

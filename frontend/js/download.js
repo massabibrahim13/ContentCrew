@@ -24,6 +24,7 @@ const PAGE_STYLE = [
   "a{color:#1f5135}",
   "blockquote{margin:1.2em 0;padding-left:16px;border-left:3px solid #d8dcd5;color:#4a524c}",
   "code{font-family:Consolas,monospace;font-size:.9em}",
+  "hr{border:0;border-top:1px solid #d8dcd5;margin:2em 0}",
 ].join("");
 
 /** "How Agentic AI Is Changing Brand Activations" -> "how-agentic-ai-is-changing-brand-activations" */
@@ -31,7 +32,7 @@ export function fileSlug(title) {
   const slug = String(title || "")
     .toLowerCase()
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60)

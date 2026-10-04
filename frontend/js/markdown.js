@@ -3,7 +3,7 @@
  *
  * It builds DOM nodes directly (no innerHTML), so model output or scraped text
  * can never inject markup. Supported: #/##/### headings, paragraphs, - and 1.
- * lists, > quotes, **bold**, *italic*, `code`, and [links](https://...).
+ * lists, > quotes, --- dividers, **bold**, *italic*, `code`, and [links](https://...).
  */
 
 import { h, safeHref } from "./dom.js";
@@ -50,10 +50,15 @@ export function renderMarkdown(source) {
     const bullet = line.match(/^\s*[-*]\s+(.*)$/);
     const numbered = line.match(/^\s*\d+[.)]\s+(.*)$/);
     const quote = line.match(/^>\s?(.*)$/);
+    const divider = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line);
 
     if (!line.trim()) {
       flushParagraph();
       flushList();
+    } else if (divider) {
+      flushParagraph();
+      flushList();
+      fragment.append(h("hr"));
     } else if (heading) {
       flushParagraph();
       flushList();

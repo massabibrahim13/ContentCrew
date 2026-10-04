@@ -1,25 +1,84 @@
 # ContentCrew
 
-AI agents that research, analyze, generate and publish marketing content, with you in the loop.
+**A team of AI agents that researches your competitors and writes SEO blog posts, with you approving every step.**
 
-> Research → Analyze → Approve → Generate → Review → Publish
+![The ContentCrew workspace: the Supervisor plans the post, the Analysis Agent researches, and the finished post is open for review](docs/screenshots/workspace.png)
 
-Built for the AI Solutions Engineering course. `ContentCrew_Project_Context.md` is the product and
-architecture spec and the source of truth for every decision in this repo.
+Tell ContentCrew what to write, like *"Write a blog on how we can be better than our
+competitors"*. Three AI agents then do the work a content marketer would: find and read what
+competitors publish, work out the keywords and the gaps they leave, and write a post that fills
+them. The workflow stops twice for your decision, and nothing is published without your yes.
 
-## Status
+## What it does
 
-| Phase | Scope | State |
-|---|---|---|
-| 1 | Frontend: design system, landing page, 3-column dashboard, timeline, blog editor | Done |
-| 2 | App foundation: Flask, SQLite, APIs, live event stream, onboarding | Done |
-| 3 | LangGraph workflow: Supervisor, Analysis and Generation agents, nodes, tools, human approvals | Done |
-| 4 | Analysis Agent as a real agent: competitor discovery, targeted search, source selection, a "search again?" loop, richer analysis, typed research output, node/tool events | Done |
-| 5 | Generation Agent: writes from the approved research, checks its own outline, measured SEO optimization, regeneration that redoes only what the feedback is about | Done |
-| 6 | Workspace UI: compact approval cards, outline and SEO in the editor, regenerate with feedback, research summary | Done |
-| 7 | Integration: publishing through `POST /blog`, Cancel request, draft/approval consistency, exact status text, traceable events | Done |
+- **Researches like a marketer.** Searches the web, reads competitor articles (and skips any page a
+  site asks crawlers not to read), ranks keywords and finds the topics competitors don't cover.
+- **Asks before it writes.** You review the research and strategy, and approve it, change it or
+  cancel.
+- **Writes and checks its own work.** Builds an outline, reviews it, writes the draft, then
+  measures its SEO: keyword placement, headings, readability, overlap with competitor wording, and
+  figures that have no source.
+- **Changes only what you ask.** "Make the introduction shorter" rewrites one section and leaves the
+  rest word for word. Bigger requests get a new draft or a new outline, never a redo of the research.
+- **Publishes or exports.** Publishes to its built-in blog, or downloads the post as a web page or
+  Markdown file for any website.
+- **Shows its work.** Every agent, step and tool call appears live in a timeline, in light or dark
+  mode.
 
-The whole flow, step by step, is in [docs/END_TO_END.md](docs/END_TO_END.md).
+## See it in action
+
+These screenshots are from a real run with the built-in sample company (Apimio, competing with Akeneo,
+Salsify and Plytix): live web searches, real competitor pages, and a real revision.
+
+| **1. Research with real tools** | **2. You approve the strategy** |
+|:--|:--|
+| ![The Analysis Agent running four Google searches, one aimed at the competitors' own sites, then reading their pages](docs/screenshots/research.png) | ![The research approval card: 3 competitors, 5 sources, 15 keywords, 5 content gaps, and a summary](docs/screenshots/research-approval.png) |
+| Four web searches, one aimed at the competitors' own sites, then the agent picks which pages to read. | Competitors, sources, keywords and content gaps in one card. Nothing is written until you approve. |
+| **3. Only what you asked changes** | **4. Published** |
+| ![The content approval card showing that revision 1 changed only the introduction, with the outline and SEO details open](docs/screenshots/draft-review.png) | ![The published post page for "How AI Is Transforming Product Information Management for E-Commerce Brands"](docs/screenshots/published-post.png) |
+| "Make the introduction shorter" changed one section. The SEO check flags what to fix, like an overused keyword. | The finished post on the built-in blog, also downloadable for any website. |
+
+<p align="center"><img src="docs/screenshots/dark-mode.png" alt="The same workspace in dark mode" width="80%"></p>
+
+## How it works
+
+```mermaid
+flowchart LR
+    you(["You"]) -->|request| sup["Supervisor Agent<br/>plans and routes"]
+    sup --> ana["Analysis Agent<br/>search, read, analyze"]
+    ana --> r{"Research<br/>approval"}
+    r -->|change| ana
+    r -->|approve| gen["Generation Agent<br/>outline, draft, SEO check"]
+    gen --> c{"Content<br/>approval"}
+    c -->|regenerate| gen
+    c -->|publish| pub["Publish Blog<br/>POST /blog"]
+```
+
+- The **Supervisor Agent** understands the request, plans the steps, hands work to the right agent
+  and acts on your decisions. It never researches or writes itself.
+- The **Analysis Agent** uses Google Search, a web scraper, competitor analysis and keyword
+  analysis, and searches again if its first sources are too thin.
+- The **Generation Agent** writes only from the research you approved, then checks its own SEO.
+
+## Engineering highlights
+
+- **A real agent graph.** Built on LangGraph: conditional routing, human approvals as graph
+  interrupts, and every step checkpointed to SQLite. A paused workflow survives a restart, and a
+  failed step can be retried without redoing the steps before it.
+- **Targeted revisions.** The Generation Agent decides whether feedback needs one section, a new
+  draft or a new outline, and keeps everything else exactly as it was.
+- **Reliable model output.** Structured answers with fallbacks (JSON schema, then function calling,
+  then JSON read from plain text), so a model's formatting quirks don't stop the workflow.
+- **Web content treated as untrusted.** Escaped in prompts and never rendered as HTML; the scraper
+  blocks private network addresses and respects robots.txt.
+- **Publishing over real HTTP.** The Publish Blog tool calls `POST /blog`, and the server checks the
+  draft is approved, current and at the publish step before accepting it.
+- **Traceable.** Live updates over Server-Sent Events; every event names its agent, node and tool.
+- **Tested.** 151 automated tests covering the agents, tools, workflow, API and full runs.
+- **Free to run.** Groq's free tier for the language model and Tavily's free plan for search.
+
+**Tech stack:** Python, Flask, LangGraph, LangChain (Groq), SQLite, plain JavaScript, HTML and CSS
+(no frontend framework), pytest.
 
 ## Try it on your computer
 
@@ -327,6 +386,7 @@ contentcrew/
 ├── data/                       sample company; databases are created here
 ├── docs/SECURITY.md            how untrusted web content is contained
 ├── docs/END_TO_END.md          the whole flow, from request to "Blog published successfully"
+├── docs/screenshots/           the images in this README (from real runs)
 └── tests/                      134 tests: tools, both agents, API, the full workflow, integration
 ```
 
@@ -350,9 +410,29 @@ contentcrew/
 
 ## What's next
 
-- Add a password before putting the app online (there are no user accounts yet). Free hosting
-  options for a small Flask app exist, but only once that's in place.
+- There are no user accounts, so ContentCrew is built to run on your own computer. Putting it online
+  would need logins and a separate workspace for each user first.
+- A page listing your past posts.
 - Optional: stream the draft as it's written.
+
+## How it was built
+
+ContentCrew was built by Massab Ibrahim, phase by phase, as a project for
+[Edversity](https://edversity.com.pk/ai-solutions/)'s AI Solutions Engineering Program.
+`ContentCrew_Project_Context.md` is the program's product and architecture spec.
+
+| Phase | Scope | State |
+|---|---|---|
+| 1 | Frontend: design system, landing page, 3-column dashboard, timeline, blog editor | Done |
+| 2 | App foundation: Flask, SQLite, APIs, live event stream, onboarding | Done |
+| 3 | LangGraph workflow: Supervisor, Analysis and Generation agents, nodes, tools, human approvals | Done |
+| 4 | Analysis Agent as a real agent: competitor discovery, targeted search, source selection, a "search again?" loop, richer analysis, typed research output, node/tool events | Done |
+| 5 | Generation Agent: writes from the approved research, checks its own outline, measured SEO optimization, regeneration that redoes only what the feedback is about | Done |
+| 6 | Workspace UI: compact approval cards, outline and SEO in the editor, regenerate with feedback, research summary | Done |
+| 7 | Integration: publishing through `POST /blog`, Cancel request, draft/approval consistency, exact status text, traceable events | Done |
+| + | Download as a web page or Markdown, dark mode | Done |
+
+The whole flow, step by step, is in [docs/END_TO_END.md](docs/END_TO_END.md).
 
 ## License
 
